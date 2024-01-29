@@ -75,8 +75,6 @@ torch.save(U_Net, "U_Net.pkl")
 
 
 
-
-
 if __name__ == '__main__':
     file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
     file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
