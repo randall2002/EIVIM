@@ -2,8 +2,10 @@ import os
 import zipfile
 import numpy as np
 from scipy.optimize import curve_fit
+from criterion import param_loss, img_loss
+from functions_and_demo import read_data
 
-def train_model(model, criterion, optimizer, traindataloader, num_epochs=25):
+def train_model(model, criterion, optimizer, traindataloader, valdataloader, num_epochs=25):
     since = time.time()
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = le10
@@ -65,7 +67,7 @@ def train_model(model, criterion, optimizer, traindataloader, num_epochs=25):
 
 # 定义损失函数和优化器
 LR = 0.003
-criterion = 
+criterion = param_loss
 optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=le-4)
 # 对模型迭代训练，所有数据训练epoch轮
 net, train_process = train_model(U_Net, criterion, optimizer, train_loader, val_loader, num_epochs=25)
@@ -89,24 +91,24 @@ if __name__ == '__main__':
     rRMSE_case =np.empty([num_cases])
     rRMSE_t_case =np.empty([num_cases])
 
-    for i in range(num_cases):
+    # load gt data
+    x = read_data(file_dir, fname_gt, i+1)
         
-        # load gt data
-        x = read_data(file_dir, fname_gt, i+1)
+    # load noisy data and perform baseline reconstruction
+    k= read_data(file_dir, fname_noisyDWIk, i+1)
         
-        # load noisy data and perform baseline reconstruction
-        k= read_data(file_dir, fname_noisyDWIk, i+1)
-        arr3D_fittedParams = fit_biExponential_model(k, b)
+    # load tissue type data
+    gt_t = read_data(file_dir, fname_tissue, i+1)
 
-        # load tissue type data
-        gt_t = read_data(file_dir, fname_tissue, i+1)
+    # load param data
+    gt_param = read_data(file_dir, fname_tissue, i+1)
         
-        # compute the rRMSE 
-        rRMSE_case[i], rRMSE_t_case[i] = rRMSE_per_case(arr3D_fittedParams[:,:,0], arr3D_fittedParams[:,:,1], arr3D_fittedParams[:,:,2],\
+    # compute the rRMSE 
+    rRMSE_case[i], rRMSE_t_case[i] = rRMSE_per_case(arr3D_fittedParams[:,:,0], arr3D_fittedParams[:,:,1], arr3D_fittedParams[:,:,2],\
                                                         x[:,:,0], x[:,:,1], x[:,:,2], gt_t)
     
-        np.save('{}/{:04d}.npy'.format(file_Resultdir, i+1),arr3D_fittedParams)
-        print('RMSE ALL {}\nRMSE tumor{}\nResult saved as {}'.format(rRMSE_case[i], rRMSE_t_case[i], '{}/{:04d}.npy'.format(file_Resultdir, i+1)))
+    np.save('{}/{:04d}.npy'.format(file_Resultdir, i+1),arr3D_fittedParams)
+    print('RMSE ALL {}\nRMSE tumor{}\nResult saved as {}'.format(rRMSE_case[i], rRMSE_t_case[i], '{}/{:04d}.npy'.format(file_Resultdir, i+1)))
 
     # compute the average rRMSE for all cases
     rRMSE_final_1 = np.average(rRMSE_case)

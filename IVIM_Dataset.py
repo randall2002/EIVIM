@@ -34,7 +34,8 @@ class MyDataset(Dataset):
         noisy_k = read_data(self.file_dir, self.fname_noisyDWIk, i)
         # Assuming you have a function to perform Fourier transform on x
         x_fromk = np.abs(np.fft.ifft2(noisy_k, axes=(0,1) ,norm='ortho'))
-        return x_fromk
+        gt_data = read_data(self.file_dir, self.fname_gt, i)
+        return x_fromk, gt_data
 
 
 # Set the number of cases for training and validation
