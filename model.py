@@ -35,7 +35,6 @@ class up_conv(nn.Module):
 
 class U_Net(nn.Module):
     def __init__(self, in_ch=3, out_ch=1):
-        super().__init__()
         super(U_Net, self).__init__()
         n1 = 64
         filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16]
@@ -68,7 +67,7 @@ class U_Net(nn.Module):
         e1 = self.conv1(x)
 
         e2 = self.Maxpool1(e1)
-        e2 = self.conv2(x)
+        e2 = self.conv2(e2)
 
         e3 = self.Maxpool2(e2)
         e3 = self.conv3(e3)
