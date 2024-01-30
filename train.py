@@ -1,14 +1,23 @@
 import os
 import zipfile
+import copy
+import torch
+from IVIM_Dataset import train_dataloader, val_dataloader
 import numpy as np
-from scipy.optimize import curve_fit
-from criterion import param_loss, img_loss
+import pandas as pd
+from time import time
+from torch import nn
+import torch.optim as optim
+# from criterion import param_loss, img_loss
 from functions_and_demo import read_data
+from model import U_Net
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_model(model, criterion, optimizer, traindataloader, valdataloader, num_epochs=25):
     since = time.time()
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_loss = le10
+    best_loss =  float('inf')
     train_loss_all = []
     train_acc_all = []
     val_loss_all = []
@@ -65,59 +74,32 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
     model.load_state_dict(best_model_wts)
     return model, train_process
 
+
+unet = U_Net()
 # 定义损失函数和优化器
 LR = 0.003
-criterion = param_loss
-optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=le-4)
+criterion = nn.NLLLoss
+optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
 # 对模型迭代训练，所有数据训练epoch轮
-net, train_process = train_model(U_Net, criterion, optimizer, train_loader, val_loader, num_epochs=25)
+net, train_process = train_model(U_Net, criterion, optimizer, train_dataloader, val_dataloader, num_epochs=25)
 # 保存训练好的网络 U_Net
 torch.save(U_Net, "U_Net.pkl")
 
 
 
 
-if __name__ == '__main__':
-    file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
-    file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
-    fname_gt ='_IVIMParam.npy'
-    fname_tissue ='_TissueType.npy'
-    fname_noisyDWIk = '_NoisyDWIk.npy'
-    num_cases = 2
-    Nx = 200
-    Ny = 200
-    b = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
+# if __name__ == '__main__':
+#     file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
+#     file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
+#     fname_gt ='_IVIMParam.npy'
+#     fname_tissue ='_TissueType.npy'
+#     fname_noisyDWIk = '_NoisyDWIk.npy'
+#     num_cases = 2
+#     Nx = 200
+#     Ny = 200
+#     b = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
 
-    rRMSE_case =np.empty([num_cases])
-    rRMSE_t_case =np.empty([num_cases])
+#     rRMSE_case =np.empty([num_cases])
+#     rRMSE_t_case =np.empty([num_cases])
 
-    # load gt data
-    x = read_data(file_dir, fname_gt, i+1)
-        
-    # load noisy data and perform baseline reconstruction
-    k= read_data(file_dir, fname_noisyDWIk, i+1)
-        
-    # load tissue type data
-    gt_t = read_data(file_dir, fname_tissue, i+1)
-
-    # load param data
-    gt_param = read_data(file_dir, fname_tissue, i+1)
-        
-    # compute the rRMSE 
-    rRMSE_case[i], rRMSE_t_case[i] = rRMSE_per_case(arr3D_fittedParams[:,:,0], arr3D_fittedParams[:,:,1], arr3D_fittedParams[:,:,2],\
-                                                        x[:,:,0], x[:,:,1], x[:,:,2], gt_t)
-    
-    np.save('{}/{:04d}.npy'.format(file_Resultdir, i+1),arr3D_fittedParams)
-    print('RMSE ALL {}\nRMSE tumor{}\nResult saved as {}'.format(rRMSE_case[i], rRMSE_t_case[i], '{}/{:04d}.npy'.format(file_Resultdir, i+1)))
-
-    # compute the average rRMSE for all cases
-    rRMSE_final_1 = np.average(rRMSE_case)
-    rRMSE_final_tumor_1 = np.average(rRMSE_t_case)
-    print('Total RMSE all {}\n      RMSE tumor {}'.format(rRMSE_final_1, rRMSE_final_tumor_1))
-
-    # save and zip data for submission
-    with zipfile.ZipFile('./Solution.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file in os.listdir(file_Resultdir):
-            file_path = os.path.join(file_Resultdir, file)
-            zipf.write(file_path,arcname=file)
 

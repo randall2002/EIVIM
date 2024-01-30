@@ -49,13 +49,3 @@ train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 # Create validation dataset and dataloader
 val_dataset = MyDataset(file_dir, fname_noisyDWIk, num_train_cases + 1, num_train_cases + num_val_cases)
 val_dataloader = DataLoader(val_dataset, batch_size=4, shuffle=False)
-
-# Now you can iterate over training_dataloader and validation_dataloader in your training loop
-for epoch in range(num_epochs):
-    for batch in train_dataloader:
-        # Your training code here
-
-    # Validation
-    with torch.no_grad():
-        for batch in val_dataloader:
-            # Your validation code here
