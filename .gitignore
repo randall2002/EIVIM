@@ -1,0 +1,8 @@
+# Default ignored files
+temp.py
+.zip
+*.py.bak
+.idea/.gitignore
+.idea/*.xml
+.idea/*.iml
+.idea/inspectionProfiles/*.xml
