@@ -147,46 +147,46 @@ def fit_biExponential_model(arr3D_imgk, arr1D_b):
     return np.concatenate((arr2D_fFitted[:,:,np.newaxis],arr2D_DtFitted[:,:,np.newaxis],arr2D_DsFitted[:,:,np.newaxis]), axis=2)
 
 
-if __name__ == '__main__':
-    file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
-    file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
-    fname_gt ='_IVIMParam.npy'
-    fname_tissue ='_TissueType.npy'
-    fname_noisyDWIk = '_NoisyDWIk.npy'
-    num_cases = 2
-    Nx = 200
-    Ny = 200
-    b = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
+# if __name__ == '__main__':
+#     file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
+#     file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
+#     fname_gt ='_IVIMParam.npy'
+#     fname_tissue ='_TissueType.npy'
+#     fname_noisyDWIk = '_NoisyDWIk.npy'
+#     num_cases = 2
+#     Nx = 200
+#     Ny = 200
+#     b = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
 
-    rRMSE_case =np.empty([num_cases])
-    rRMSE_t_case =np.empty([num_cases])
+#     rRMSE_case =np.empty([num_cases])
+#     rRMSE_t_case =np.empty([num_cases])
 
-    for i in range(num_cases):
+#     for i in range(num_cases):
         
-        # load gt data
-        x = read_data(file_dir, fname_gt, i+1)
+#         # load gt data
+#         x = read_data(file_dir, fname_gt, i+1)
         
-        # load noisy data and perform baseline reconstruction
-        k= read_data(file_dir, fname_noisyDWIk, i+1)
-        arr3D_fittedParams = fit_biExponential_model(k, b)
+#         # load noisy data and perform baseline reconstruction
+#         k= read_data(file_dir, fname_noisyDWIk, i+1)
+#         arr3D_fittedParams = fit_biExponential_model(k, b)
 
-        # load tissue type data
-        gt_t = read_data(file_dir, fname_tissue, i+1)
+#         # load tissue type data
+#         gt_t = read_data(file_dir, fname_tissue, i+1)
         
-        # compute the rRMSE 
-        rRMSE_case[i], rRMSE_t_case[i] = rRMSE_per_case(arr3D_fittedParams[:,:,0], arr3D_fittedParams[:,:,1], arr3D_fittedParams[:,:,2],\
-                                                        x[:,:,0], x[:,:,1], x[:,:,2], gt_t)
+#         # compute the rRMSE 
+#         rRMSE_case[i], rRMSE_t_case[i] = rRMSE_per_case(arr3D_fittedParams[:,:,0], arr3D_fittedParams[:,:,1], arr3D_fittedParams[:,:,2],\
+#                                                         x[:,:,0], x[:,:,1], x[:,:,2], gt_t)
     
-        np.save('{}/{:04d}.npy'.format(file_Resultdir, i+1),arr3D_fittedParams)
-        print('RMSE ALL {}\nRMSE tumor{}\nResult saved as {}'.format(rRMSE_case[i], rRMSE_t_case[i], '{}/{:04d}.npy'.format(file_Resultdir, i+1)))
+#         np.save('{}/{:04d}.npy'.format(file_Resultdir, i+1),arr3D_fittedParams)
+#         print('RMSE ALL {}\nRMSE tumor{}\nResult saved as {}'.format(rRMSE_case[i], rRMSE_t_case[i], '{}/{:04d}.npy'.format(file_Resultdir, i+1)))
 
-    # compute the average rRMSE for all cases
-    rRMSE_final_1 = np.average(rRMSE_case)
-    rRMSE_final_tumor_1 = np.average(rRMSE_t_case)
-    print('Total RMSE all {}\n      RMSE tumor {}'.format(rRMSE_final_1, rRMSE_final_tumor_1))
+#     # compute the average rRMSE for all cases
+#     rRMSE_final_1 = np.average(rRMSE_case)
+#     rRMSE_final_tumor_1 = np.average(rRMSE_t_case)
+#     print('Total RMSE all {}\n      RMSE tumor {}'.format(rRMSE_final_1, rRMSE_final_tumor_1))
 
-    # save and zip data for submission
-    with zipfile.ZipFile('./Solution.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for file in os.listdir(file_Resultdir):
-            file_path = os.path.join(file_Resultdir, file)
-            zipf.write(file_path,arcname=file)
+#     # save and zip data for submission
+#     with zipfile.ZipFile('./Solution.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
+#         for file in os.listdir(file_Resultdir):
+#             file_path = os.path.join(file_Resultdir, file)
+#             zipf.write(file_path,arcname=file)
