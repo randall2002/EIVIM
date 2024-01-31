@@ -83,7 +83,6 @@ class MyDataset(Dataset):
 # 测试代码；
 import matplotlib.pyplot as plt
 
-<<<<<<< HEAD
 # 辅助函数，用于显示图像
 def display_sample(noisy_images, noiseless_images, param_maps):
     num_b_values = noisy_images.shape[2]
@@ -126,8 +125,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-=======
-# Create validation dataset and dataloader
-val_dataset = MyDataset(file_dir, fname_noisyDWIk, num_train_cases + 1, num_train_cases + num_val_cases)
-val_dataloader = DataLoader(val_dataset, batch_size=4, shuffle=False)
->>>>>>> origin/main
