@@ -31,42 +31,46 @@ class MyDataset(Dataset):
         return self.count
 
     def __getitem__(self, index):
-        noisy_image = self.load_noisy_image(index)
+        noisy_images = self.load_noisy_images(index)
         param_maps = self.load_param_maps(index)
-        noiseless_image = self.load_noiseless_image(index)
+        noiseless_images = self.load_noiseless_images(index)
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
+
+        #维度顺序，变换前：（height, width, channels),如：(200, 200, 8)
+        #维度顺序，变换后：（channels, height, width)，如：(8, 200, 200)
+
         if self.transform:
             angle = transforms.RandomRotation.get_params([-10, 10])  # 随机角度
             flip = torch.rand(1) < 0.5  # 随机决定是否翻转
             #应用变换
-            noisy_image = self.apply_transform(noisy_image, angle, flip)
-            noiseless_image = self.apply_transform(noiseless_image, angle, flip)
+            noisy_image = self.apply_transform(noisy_images, angle, flip)
+            noiseless_image = self.apply_transform(noiseless_images, angle, flip)
             param_maps = self.apply_transform(param_maps, angle, flip)  # 同样对参数图应用增强
         else:
             numpy_to_tensor = NumpyToTensor()
-            noisy_image = numpy_to_tensor(noisy_image)
-            noiseless_image = numpy_to_tensor(noiseless_image)
+            noisy_images = numpy_to_tensor(noisy_images)
+            noiseless_images = numpy_to_tensor(noiseless_images)
             param_maps = numpy_to_tensor(param_maps)
 
         # 返回样本和标签数据
-        return noisy_image, (param_maps, noiseless_image), index + self.start_index
+        return noisy_images, (param_maps, noiseless_images), index + self.start_index
 
-    def load_noisy_image(self, index):
+    def load_noisy_images(self, index):
         # 加载带噪声的图像
         i = index + self.start_index
 
         noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
         # Assuming you have a function to perform Fourier transform on x
-        noisy_image = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
-        noisy_preprocessed = self.__preprocess_1bseries(noisy_image)
+        noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
+        noisy_preprocessed = self.__preprocess_1bseries(noisy_images)
         return noisy_preprocessed
 
-    def __preprocess_1bseries(self, noisy_image):
+    def __preprocess_1bseries(self, noisy_images):
 
         pass
-        return noisy_image
+        return noisy_images
 
     def load_param_maps(self, index):
         # 加载参数图
@@ -75,11 +79,11 @@ class MyDataset(Dataset):
         param_maps = data
         return param_maps
 
-    def load_noiseless_image(self, index):
+    def load_noiseless_images(self, index):
         # 加载无噪声空间图
         i = index + self.start_index
-        noiseless_image = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
-        return noiseless_image
+        noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
+        return noiseless_images
 
     def __get_start_number_and_count(self, data_dir, file_name):
         # 获取所有符合条件的文件名
