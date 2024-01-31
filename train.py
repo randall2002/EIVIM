@@ -1,16 +1,22 @@
-import os
+import argparse, os
 import zipfile
 import copy
 import torch
-from IVIM_Dataset import train_dataloader, val_dataloader
+from IVIM_Dataset import MyDataset, NumpyToTensor
 import numpy as np
 import pandas as pd
-from time import time
+import time
 from torch import nn
 import torch.optim as optim
 # from criterion import param_loss, img_loss
 from functions_and_demo import read_data
 from model import U_Net
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
+
+parser = argparse.ArgumentParser(description="PyTorch EIVIM")
+parser.add_argument("--traindir", default="E:/Data/public_training_data/training1/", type=str, help="training data path")
+parser.add_argument("--validdir", default="E:/Data/public_training_data/training2/", type=str, help="validating data path")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -74,21 +80,46 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
     model.load_state_dict(best_model_wts)
     return model, train_process
 
+def main():
 
-unet = U_Net()
-# 定义损失函数和优化器
-LR = 0.003
-criterion = nn.NLLLoss
-optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
-# 对模型迭代训练，所有数据训练epoch轮
-net, train_process = train_model(U_Net, criterion, optimizer, train_dataloader, val_dataloader, num_epochs=25)
-# 保存训练好的网络 U_Net
-torch.save(U_Net, "U_Net.pkl")
+    global opt, model
+    opt = parser.parse_args()
+    print(opt)
+    #---------------------------
+
+    train_dir = opt.traindir
+    valid_dir = opt.validdir
+
+    transform = transforms.Compose([
+        NumpyToTensor(),  # 首先将Numpy数组转化为张量
+        transforms.RandomHorizontalFlip(),  # 随机水平翻转
+        transforms.RandomRotation(10),  # 随机旋转
+        # 可以添加更多的变换...
+    ])
+
+
+    train_dataset = MyDataset(train_dir, transform=None) #数据在线增强暂时不选。
+    valid_dataset = MyDataset(valid_dir, transform=None)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=4, shuffle=False)
+
+    #--------------------------
+    unet = U_Net()
+    # 定义损失函数和优化器
+    LR = 0.003
+    criterion = nn.NLLLoss()#这个损失函数要求标签的数据类型为long,...
+    optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
+    # 对模型迭代训练，所有数据训练epoch轮
+    net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
+    # 保存训练好的网络 U_Net
+    torch.save(net.state_dict(), "U_Net.pkl")
 
 
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
+    main()
 #     file_dir='/homes/lwjiang/Data/IVIM/public_training_data/'
 #     file_Resultdir='/homes/lwjiang/Data/IVIM/Result'
 #     fname_gt ='_IVIMParam.npy'

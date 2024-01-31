@@ -6,3 +6,4 @@ temp.py
 .idea/*.xml
 .idea/*.iml
 .idea/inspectionProfiles/*.xml
+__pycache__/*.pyc
