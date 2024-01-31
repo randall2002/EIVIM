@@ -172,4 +172,10 @@ def main():
 
 if __name__ == '__main__':
     main()
-
+#实例化移到train.py
+#Create training dataset and dataloader
+#train_dataset = MyDataset(file_dir, fname_noisyDWIk, 1, num_train_cases)
+#train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+# Create validation dataset and dataloader
+#val_dataset = MyDataset(file_dir, fname_noisyDWIk, num_train_cases + 1, num_train_cases + num_val_cases)
+#val_dataloader = DataLoader(val_dataset, batch_size=4, shuffle=False)
