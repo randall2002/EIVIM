@@ -37,29 +37,33 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         val_loss = 0.0
         val_num = 0
         model.train()     # train modality
-        for step, (b_x, b_y) in enumerate(traindataloader):
+        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(traindataloader):
             optimizer.zero_grad()
-            b_x = b_x.float().to(device)
-            b_y = b_y.long().to(device)
-            out = model(b_x)    # 傅里叶变换后的图像作为输入
-            loss = criterion(out, b_y)
+            in_noisy_images = in_noisy_images.float().to(device)
+            gt_maps = gt_maps.long().to(device)
+            gt_noiseless_images =gt_noiseless_images.float().to(device)
+
+
+            out = model(in_noisy_images)
+            loss = criterion(out, gt_maps)#可能网络需要输出s0,并把S0跟无噪图相比完善loss.
             loss.backward()
             optimizer.step()
-            train_loss += loss.item() * len(b_y)
-            train_num += len(b_y)
+            train_loss += loss.item() * len(gt_maps)
+            train_num += len(gt_maps)
         # 计算一个epoch在训练集上的精度和损失
         train_loss_all.append(train_loss / train_num)
         print('{} Train Loss:{:.4f}'.format(epoch, train_loss_all[-1]))
 
         # 计算一个epoch训练后在验证集上的损失
         model.eval()
-        for step, (b_x, b_y) in enumerate(valdataloader):
-            b_x = b_x.float().to(device)
-            b_y = b_y.long().to(device)
-            out = model(b_x)    # 傅里叶变换后的图像作为输入
-            loss = criterion(out, b_y)
-            val_loss += loss.item() * len(b_y)
-            val_num += len(b_y)
+        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(valdataloader):
+            in_noisy_images = in_noisy_images.float().to(device)
+            gt_maps = gt_maps.long().to(device)
+            gt_noiseless_images = gt_noiseless_images.float().to(device)
+            out = model(in_noisy_images)    # 傅里叶变换后的图像作为输入
+            loss = criterion(out, gt_maps)
+            val_loss += loss.item() * len(gt_maps)
+            val_num += len(gt_maps)
         # 计算一个epoch在验证集上的精度和损失
         val_loss_all.append(val_loss / val_num)
         print('{} Val Loss:{:.4f}'.format(epoch, val_loss_all[-1]))
@@ -105,7 +109,7 @@ def main():
     valid_dataloader = DataLoader(valid_dataset, batch_size=4, shuffle=False)
 
     #--------------------------
-    unet = U_Net()
+    unet = U_Net(in_ch=8, out_ch=3).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
     # 定义损失函数和优化器
     LR = 0.003
     criterion = nn.NLLLoss()#这个损失函数要求标签的数据类型为long,...

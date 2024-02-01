@@ -36,7 +36,7 @@ class up_conv(nn.Module):
     
 class crop_cat(nn.Module):
     def forward(self, x, x_contract):
-        x_contract = CenterCrop(x_contract,[x.shape[0],x.shape[1]])
+        x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[13]])
         x_cat = torch.cat([x,x_contract],dim=1)
         return x_cat
 
@@ -109,6 +109,21 @@ class U_Net(nn.Module):
 
         return out
 
+#测试代码
+from torchsummary import summary
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    unet = U_Net(in_ch= 8, out_ch=3).to(device)
+    #print(unet)
+    summary(unet, input_size=(8, 256, 256))
+    #项目典型数据维度是：(4, 8, 200, 200)，对导致拼接不匹配，需要做相应调整；
 
+    tmp = torch.randn(4, 8, 256, 256).to(device)
+    out = unet(tmp)
+    print('out.shape:', out.shape)
+    p = sum(map(lambda p: p.numel(), unet.parameters()))
+    print('parameters size:', p)
 
+if __name__ == '__main__':
+    main()
 
