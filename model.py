@@ -76,7 +76,7 @@ class U_Net(nn.Module):
         e4 = self.conv4(e4)
 
         e5 = self.Maxpool4(e4)
-        e5 = self.conv4(e5)
+        e5 = self.conv5(e5)
 
         d5 = self.Up5(e5)
         d5 = torch.cat((e4, d5), dim=1)
@@ -100,6 +100,21 @@ class U_Net(nn.Module):
 
         return out
 
+#测试代码
+from torchsummary import summary
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    unet = U_Net(in_ch= 8, out_ch=3).to(device)
+    #print(unet)
+    summary(unet, input_size=(8, 256, 256))
+    #项目典型数据维度是：(4, 8, 200, 200)，对导致拼接不匹配，需要做相应调整；
 
+    #tmp = torch.randn(4, 8, 200, 200)
+    #out = unet(tmp)
+    #print('out.shape:', out.shape)
+    #p = sum(map(lambda p: p.numel(), unet.parameters()))
+    #print('parameters size:', p)
 
+if __name__ == '__main__':
+    main()
 
