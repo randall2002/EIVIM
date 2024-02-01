@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 import torch
+from torchvision.transforms import CenterCrop
 
 class conv_block(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -32,6 +33,12 @@ class up_conv(nn.Module):
     def forward(self, x):
         x = self.up(x)
         return x
+    
+class crop_cat(nn.Module):
+    def forward(self, x, x_contract):
+        x_contract = CenterCrop(x_contract,[x.shape[0],x.shape[1]])
+        x_cat = torch.cat([x,x_contract],dim=1)
+        return x_cat
 
 class U_Net(nn.Module):
     def __init__(self, in_ch=3, out_ch=1):
@@ -63,6 +70,8 @@ class U_Net(nn.Module):
 
         self.Conv = nn.Conv2d(filters[0], out_ch, kernel_size=1, stride=1, padding=0)
 
+        self.Crop_Cat = crop_cat()
+
     def forward(self, x):
         e1 = self.conv1(x)
 
@@ -76,22 +85,22 @@ class U_Net(nn.Module):
         e4 = self.conv4(e4)
 
         e5 = self.Maxpool4(e4)
-        e5 = self.conv4(e5)
+        e5 = self.conv5(e5)
 
         d5 = self.Up5(e5)
-        d5 = torch.cat((e4, d5), dim=1)
+        d5 = self.Crop_Cat(e4, d5)
         d5 = self.Up_conv5(d5)
 
         d4 = self.Up4(d5)
-        d4 = torch.cat((e3, d4), dim=1)
+        d4 = self.Crop_Cat(e3, d4)
         d4 = self.Up_conv4(d4)
 
         d3 = self.Up3(d4)
-        d3 = torch.cat((e2, d3), dim=1)
+        d3 = self.Crop_Cat(e2, d3)
         d3 = self.Up_conv3(d3)
 
         d2 = self.Up2(d3)
-        d2 = torch.cat((e1, d2), dim=1)
+        d2 = self.Crop_Cat(e1, d2)
         d2 = self.Up_conv2(d2)
 
         out = self.Conv(d2)
