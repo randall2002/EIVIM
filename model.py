@@ -36,7 +36,7 @@ class up_conv(nn.Module):
     
 class crop_cat(nn.Module):
     def forward(self, x, x_contract):
-        x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[13]])
+        x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[3]])
         x_cat = torch.cat([x,x_contract],dim=1)
         return x_cat
 
