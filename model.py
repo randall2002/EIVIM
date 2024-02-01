@@ -109,11 +109,11 @@ def main():
     summary(unet, input_size=(8, 256, 256))
     #项目典型数据维度是：(4, 8, 200, 200)，对导致拼接不匹配，需要做相应调整；
 
-    #tmp = torch.randn(4, 8, 200, 200)
-    #out = unet(tmp)
-    #print('out.shape:', out.shape)
-    #p = sum(map(lambda p: p.numel(), unet.parameters()))
-    #print('parameters size:', p)
+    tmp = torch.randn(4, 8, 256, 256).to(device)
+    out = unet(tmp)
+    print('out.shape:', out.shape)
+    p = sum(map(lambda p: p.numel(), unet.parameters()))
+    print('parameters size:', p)
 
 if __name__ == '__main__':
     main()

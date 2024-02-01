@@ -163,16 +163,18 @@ def main():
     dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
 
     # 加载一个批次的数据并显示一个样本
-    for noisy_images, (param_maps, noiseless_images), sample_indices  in dataloader:
-        # 只显示第一个样本
-        noisy_image = noisy_images[0].numpy()
-        noiseless_image = noiseless_images[0].numpy()
-        param_map = param_maps[0].numpy()
-        sample_index = sample_indices[0]  # 获取第一个样本的索引
+    for step, (noisy_images, (param_maps, noiseless_images), sample_indices)  in enumerate(dataloader):
+        if step == 10: #显示指定批次
+            # 只显示第一个样本
+            noisy_image = noisy_images[0].numpy()
+            noiseless_image = noiseless_images[0].numpy()
+            param_map = param_maps[0].numpy()
+            sample_index = sample_indices[0]  # 获取第一个样本的索引
 
-        # 显示样本
-        display_sample(noisy_image, noiseless_image, param_map, sample_index, data_dir)
-        break
+            # 显示样本
+            display_sample(noisy_image, noiseless_image, param_map, sample_index, data_dir)
+            break
+
 
 if __name__ == '__main__':
     main()
