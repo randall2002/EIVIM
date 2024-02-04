@@ -45,8 +45,8 @@ class MyDataset(Dataset):
             angle = transforms.RandomRotation.get_params([-10, 10])  # 随机角度
             flip = torch.rand(1) < 0.5  # 随机决定是否翻转
             #应用变换
-            noisy_image = self.apply_transform(noisy_images, angle, flip)
-            noiseless_image = self.apply_transform(noiseless_images, angle, flip)
+            noisy_images = self.apply_transform(noisy_images, angle, flip)
+            noiseless_images = self.apply_transform(noiseless_images, angle, flip)
             param_maps = self.apply_transform(param_maps, angle, flip)  # 同样对参数图应用增强
         else:
             numpy_to_tensor = NumpyToTensor()

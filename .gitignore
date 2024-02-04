@@ -7,3 +7,4 @@ temp.py
 .idea/*.iml
 .idea/inspectionProfiles/*.xml
 __pycache__/*.pyc
+backup/*.*

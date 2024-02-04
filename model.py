@@ -35,10 +35,18 @@ class up_conv(nn.Module):
         return x
     
 class crop_cat(nn.Module):
-    def forward(self, x, x_contract):
-        x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[3]])
-        x_cat = torch.cat([x,x_contract],dim=1)
-        return x_cat
+    #def forward(self, x, x_contract):
+        #x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[3]])
+        #return x_cat
+        #----------
+    #临时代码，上面有错误。
+     def forward(self, e4, d5):
+        if d5.size()[2] != e4.size()[2] or d5.size()[3] != e4.size()[3]:
+            d5 = F.pad(d5, [0, e4.size()[3] - d5.size()[3], 0, e4.size()[2] - d5.size()[2]])
+
+        d5 = torch.cat((e4, d5), dim=1)
+        return d5
+
 
 class U_Net(nn.Module):
     def __init__(self, in_ch=3, out_ch=1):
@@ -115,10 +123,11 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     unet = U_Net(in_ch= 8, out_ch=3).to(device)
     #print(unet)
-    summary(unet, input_size=(8, 256, 256))
-    #项目典型数据维度是：(4, 8, 200, 200)，对导致拼接不匹配，需要做相应调整；
+    #summary函数根据模型的定义在cpu上模拟计算，并不执行实际的前向传播计算。所以，不需要.to(device)
+    summary(unet, input_size=(8, 200, 200))
+    #项目典型数据维度是：(4, 8, 200, 200)，会导致拼接不匹配，需要做相应调整；
 
-    tmp = torch.randn(4, 8, 256, 256).to(device)
+    tmp = torch.randn(4, 8, 200, 200).to(device)
     out = unet(tmp)
     print('out.shape:', out.shape)
     p = sum(map(lambda p: p.numel(), unet.parameters()))
