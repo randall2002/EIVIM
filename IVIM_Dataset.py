@@ -64,6 +64,7 @@ class MyDataset(Dataset):
         noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
         # Assuming you have a function to perform Fourier transform on x
         noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
+        noisy_images = noisy_images.astype(np.float32)
         noisy_preprocessed = self.__preprocess_1bseries(noisy_images)
         return noisy_preprocessed
 
@@ -75,14 +76,16 @@ class MyDataset(Dataset):
     def load_param_maps(self, index):
         # 加载参数图
         i = index + self.start_index
-        data = self.__read_data(self.data_dir, self.fname_gt, i)
-        param_maps = data
+        param_maps = self.__read_data(self.data_dir, self.fname_gt, i)
+        if param_maps.dtype == np.float64:
+            param_maps = param_maps.astype(np.float32)
         return param_maps
 
     def load_noiseless_images(self, index):
         # 加载无噪声空间图
         i = index + self.start_index
         noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
+        noiseless_images = noiseless_images.astype(np.float32)
         return noiseless_images
 
     def __get_start_number_and_count(self, data_dir, file_name):
@@ -166,12 +169,16 @@ def main():
     for step, (noisy_images, (param_maps, noiseless_images), sample_indices)  in enumerate(dataloader):
         if step == 10: #显示指定批次
             # 只显示第一个样本
+
             noisy_image = noisy_images[0].numpy()
             noiseless_image = noiseless_images[0].numpy()
             param_map = param_maps[0].numpy()
             sample_index = sample_indices[0]  # 获取第一个样本的索引
 
             # 显示样本
+            print("noisy_image.shape: ", noisy_image.shape, "type: ", noisy_image.dtype)
+            print("noiseless_image.shape: ", noiseless_image.shape, "type: ", noiseless_image.dtype)
+            print("param_map.shape: ", param_map.shape, "type: ", param_map.dtype)
             display_sample(noisy_image, noiseless_image, param_map, sample_index, data_dir)
             break
 

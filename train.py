@@ -21,15 +21,16 @@ parser.add_argument("--validdir", default="E:/Data/public_training_data/training
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train_model(model, criterion, optimizer, traindataloader, valdataloader, num_epochs=25):
-    since = time.time()
+
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss =  float('inf')
     train_loss_all = []
     train_acc_all = []
     val_loss_all = []
     val_acc_all = []
-    since = time.time()
+
     for epoch in range(num_epochs):
+        since = time.time()
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
         train_loss = 0.0
@@ -39,9 +40,9 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         model.train()     # train modality
         for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(traindataloader):
             optimizer.zero_grad()
-            in_noisy_images = in_noisy_images.float().to(device)
-            gt_maps = gt_maps.long().to(device)
-            gt_noiseless_images =gt_noiseless_images.float().to(device)
+            in_noisy_images = in_noisy_images.to(device)
+            gt_maps = gt_maps.to(device)
+            gt_noiseless_images =gt_noiseless_images.to(device)
 
 
             out = model(in_noisy_images)
@@ -57,8 +58,8 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         # 计算一个epoch训练后在验证集上的损失
         model.eval()
         for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(valdataloader):
-            in_noisy_images = in_noisy_images.float().to(device)
-            gt_maps = gt_maps.long().to(device)
+            in_noisy_images = in_noisy_images.to(device)
+            gt_maps = gt_maps.to(device)
             gt_noiseless_images = gt_noiseless_images.float().to(device)
             out = model(in_noisy_images)    # 傅里叶变换后的图像作为输入
             loss = criterion(out, gt_maps)
@@ -112,7 +113,7 @@ def main():
     unet = U_Net(in_ch=8, out_ch=3).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
     #定义损失函数和优化器
     LR = 0.003
-    criterion = nn.NLLLoss()#这个损失函数要求标签的数据类型为long,...
+    criterion = nn.MSELoss(reduction='sum')
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
     # 对模型迭代训练，所有数据训练epoch轮
     net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
