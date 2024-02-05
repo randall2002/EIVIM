@@ -37,7 +37,8 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         val_loss = 0.0
         val_num = 0
         model.train()     # train modality
-        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(traindataloader):
+        for step, batch_data in enumerate(traindataloader):
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
             optimizer.zero_grad()
             in_noisy_images = in_noisy_images.float().to(device)
             gt_maps = gt_maps.long().to(device)
@@ -56,7 +57,8 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
 
         # 计算一个epoch训练后在验证集上的损失
         model.eval()
-        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(valdataloader):
+        for step, batch_data in enumerate(valdataloader):
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
             in_noisy_images = in_noisy_images.float().to(device)
             gt_maps = gt_maps.long().to(device)
             gt_noiseless_images = gt_noiseless_images.float().to(device)

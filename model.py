@@ -35,17 +35,18 @@ class up_conv(nn.Module):
         return x
     
 class crop_cat(nn.Module):
-    #def forward(self, x, x_contract):
-        #x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[3]])
-        #return x_cat
-        #----------
-    #临时代码，上面有错误。
-     def forward(self, e4, d5):
-        if d5.size()[2] != e4.size()[2] or d5.size()[3] != e4.size()[3]:
-            d5 = F.pad(d5, [0, e4.size()[3] - d5.size()[3], 0, e4.size()[2] - d5.size()[2]])
+    def forward(self, x, x_contract):
+        x_contract = CenterCrop(x_contract,[x.shape[2],x.shape[3]])
+        x_cat = torch.cat([x,x_contract],dim=1)
+        return x_cat
+    
+    # 临时代码，上面有错误。
+    # def forward(self, e4, d5):
+    #     if d5.size()[2] != e4.size()[2] or d5.size()[3] != e4.size()[3]:
+    #         d5 = F.pad(d5, [0, e4.size()[3] - d5.size()[3], 0, e4.size()[2] - d5.size()[2]])
 
-        d5 = torch.cat((e4, d5), dim=1)
-        return d5
+    #     d5 = torch.cat((e4, d5), dim=1)
+    #     return d5
 
 
 class U_Net(nn.Module):
