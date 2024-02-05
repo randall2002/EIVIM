@@ -34,6 +34,7 @@ class MyDataset(Dataset):
         noisy_images = self.load_noisy_images(index)
         param_maps = self.load_param_maps(index)
         noiseless_images = self.load_noiseless_images(index)
+        tissue_images = self.load_tissue_images(index)
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
@@ -48,14 +49,16 @@ class MyDataset(Dataset):
             noisy_images = self.apply_transform(noisy_images, angle, flip)
             noiseless_images = self.apply_transform(noiseless_images, angle, flip)
             param_maps = self.apply_transform(param_maps, angle, flip)  # 同样对参数图应用增强
+            tissue_images = self.apply_transform(tissue_images, angle, flip) 
         else:
             numpy_to_tensor = NumpyToTensor()
             noisy_images = numpy_to_tensor(noisy_images)
             noiseless_images = numpy_to_tensor(noiseless_images)
             param_maps = numpy_to_tensor(param_maps)
+            tissue_images = torch.from_numpy(tissue_images)
 
         # 返回样本和标签数据
-        return noisy_images, (param_maps, noiseless_images), index + self.start_index
+        return noisy_images, (param_maps, noiseless_images, tissue_images), index + self.start_index
 
     def load_noisy_images(self, index):
         # 加载带噪声的图像
@@ -87,10 +90,23 @@ class MyDataset(Dataset):
         noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
         noiseless_images = noiseless_images.astype(np.float32)
         return noiseless_images
+    
+    def load_tissue_images(self, index):
+        # 加载组织图
+        i = index + self.start_index
+        data = self.__read_data(self.data_dir, self.fname_tissue, i)
+        tissue_images = data
+        return tissue_images
 
     def __get_start_number_and_count(self, data_dir, file_name):
         # 获取所有符合条件的文件名
         files = [f for f in os.listdir(data_dir) if file_name in f]
+
+        # 如果没有找到文件，抛出异常或者返回默认值
+        if not files:
+            raise FileNotFoundError(f"No files with {file_name} found in {data_dir}")
+        # 或者你可以返回默认值
+        # return DEFAULT_START_NUMBER, DEFAULT_COUNT
 
         # 提取文件序号并转换为整数
         numbers = [int(f.split('_')[0]) for f in files]
@@ -129,7 +145,7 @@ class MyDataset(Dataset):
 import matplotlib.pyplot as plt
 
 # 辅助函数，用于显示图像
-def display_sample(noisy_images, noiseless_images, param_maps, sample_index, data_source):
+def display_sample(noisy_images, noiseless_images, param_maps, tissue_images, sample_index, data_source):
     num_b_values = noisy_images.shape[0]
     fig, axs = plt.subplots(3, max(num_b_values, 3), figsize=(15, 6))
 
@@ -149,12 +165,17 @@ def display_sample(noisy_images, noiseless_images, param_maps, sample_index, dat
         axs[2, i].set_title(param_names[i])
         axs[2, i].axis('off')
 
+    axs[2, 3].imshow(tissue_images[0, :, :], cmap='gray')
+    axs[2, 3].set_title(f'tissue')
+    axs[2, 3].axis('off')
+
     plt.suptitle(f'Sample Index: {sample_index}, Data Source: {data_source}')
     plt.show()
+    plt.savefig('case.png')
 
 # 测试代码
 def main():
-    data_dir = 'E:/Data/public_training_data/training2/'
+    data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/training1/'
     transform = transforms.Compose([
         NumpyToTensor(),  # 首先将Numpy数组转化为张量
         transforms.RandomHorizontalFlip(),  # 随机水平翻转
@@ -166,20 +187,21 @@ def main():
     dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
 
     # 加载一个批次的数据并显示一个样本
-    for step, (noisy_images, (param_maps, noiseless_images), sample_indices)  in enumerate(dataloader):
+    for step, (noisy_images, (param_maps, noiseless_images, tissue_images), sample_indices)  in enumerate(dataloader):
         if step == 10: #显示指定批次
             # 只显示第一个样本
 
             noisy_image = noisy_images[0].numpy()
             noiseless_image = noiseless_images[0].numpy()
             param_map = param_maps[0].numpy()
+            tissue_image = tissue_images.numpy()
             sample_index = sample_indices[0]  # 获取第一个样本的索引
 
             # 显示样本
             print("noisy_image.shape: ", noisy_image.shape, "type: ", noisy_image.dtype)
             print("noiseless_image.shape: ", noiseless_image.shape, "type: ", noiseless_image.dtype)
             print("param_map.shape: ", param_map.shape, "type: ", param_map.dtype)
-            display_sample(noisy_image, noiseless_image, param_map, sample_index, data_dir)
+            display_sample(noisy_image, noiseless_image, param_map, tissue_image, sample_index, data_dir)
             break
 
 

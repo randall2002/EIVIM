@@ -8,15 +8,15 @@ import pandas as pd
 import time
 from torch import nn
 import torch.optim as optim
-# from criterion import param_loss, img_loss
+from criterion import param_loss
 from functions_and_demo import read_data
 from model import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
-parser.add_argument("--traindir", default="E:/Data/public_training_data/training1/", type=str, help="training data path")
-parser.add_argument("--validdir", default="E:/Data/public_training_data/training2/", type=str, help="validating data path")
+parser.add_argument("--traindir", default="/homes/lwjiang/Data/IVIM/public_training_data/training1/", type=str, help="training data path")
+parser.add_argument("--validdir", default="/homes/lwjiang/Data/IVIM/public_training_data/training2/", type=str, help="validating data path")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -38,7 +38,8 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         val_loss = 0.0
         val_num = 0
         model.train()     # train modality
-        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(traindataloader):
+        for step, batch_data in enumerate(traindataloader):
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
             optimizer.zero_grad()
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
@@ -57,7 +58,9 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
 
         # 计算一个epoch训练后在验证集上的损失
         model.eval()
-        for step, (in_noisy_images, (gt_maps, gt_noiseless_images), _) in enumerate(valdataloader):
+
+        for step, batch_data in enumerate(valdataloader):
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
             gt_noiseless_images = gt_noiseless_images.float().to(device)
