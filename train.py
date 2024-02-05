@@ -110,7 +110,7 @@ def main():
 
     #--------------------------
     unet = U_Net(in_ch=8, out_ch=3).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
-    # 定义损失函数和优化器
+    #定义损失函数和优化器
     LR = 0.003
     criterion = nn.NLLLoss()#这个损失函数要求标签的数据类型为long,...
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
