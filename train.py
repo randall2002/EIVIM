@@ -8,15 +8,15 @@ import pandas as pd
 import time
 from torch import nn
 import torch.optim as optim
-# from criterion import param_loss, img_loss
+from criterion import param_loss
 from functions_and_demo import read_data
 from model import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
-parser.add_argument("--traindir", default="E:/Data/public_training_data/training1/", type=str, help="training data path")
-parser.add_argument("--validdir", default="E:/Data/public_training_data/training2/", type=str, help="validating data path")
+parser.add_argument("--traindir", default="/homes/lwjiang/Data/IVIM/public_training_data/training1/", type=str, help="training data path")
+parser.add_argument("--validdir", default="/homes/lwjiang/Data/IVIM/public_training_data/training2/", type=str, help="validating data path")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -34,6 +34,7 @@ class MyDataset(Dataset):
         noisy_images = self.load_noisy_images(index)
         param_maps = self.load_param_maps(index)
         noiseless_images = self.load_noiseless_images(index)
+        tissue_image = self.load_tissue_image(index)
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
@@ -53,9 +54,10 @@ class MyDataset(Dataset):
             noisy_images = numpy_to_tensor(noisy_images)
             noiseless_images = numpy_to_tensor(noiseless_images)
             param_maps = numpy_to_tensor(param_maps)
+            tissue_image = numpy_to_tensor(tissue_image)
 
         # 返回样本和标签数据
-        return noisy_images, (param_maps, noiseless_images), index + self.start_index
+        return noisy_images, (param_maps, noiseless_images, tissue_image), index + self.start_index
 
     def load_noisy_images(self, index):
         # 加载带噪声的图像
@@ -84,6 +86,13 @@ class MyDataset(Dataset):
         i = index + self.start_index
         noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
         return noiseless_images
+    
+    def load_tissue_image(self, index):
+        # 加载组织图
+        i = index + self.start_index
+        data = self.__read_data(self.data_dir, self.fname_tissue, i)
+        tissue_image = data
+        return tissue_image
 
     def __get_start_number_and_count(self, data_dir, file_name):
         # 获取所有符合条件的文件名
@@ -151,7 +160,7 @@ def display_sample(noisy_images, noiseless_images, param_maps, sample_index, dat
 
 # 测试代码
 def main():
-    data_dir = 'E:/Data/public_training_data/training2/'
+    data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/'
     transform = transforms.Compose([
         NumpyToTensor(),  # 首先将Numpy数组转化为张量
         transforms.RandomHorizontalFlip(),  # 随机水平翻转
