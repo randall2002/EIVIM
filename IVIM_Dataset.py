@@ -63,12 +63,20 @@ class MyDataset(Dataset):
     def load_noisy_images(self, index):
         # 加载带噪声的图像
         i = index + self.start_index
-
-        noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
-        # Assuming you have a function to perform Fourier transform on x
-        noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
-        noisy_images = noisy_images.astype(np.float32)
-        noisy_preprocessed = self.__preprocess_1bseries(noisy_images)
+        #
+        fname_without_ext, _ = os.path.splitext(self.fname_noisyDWIk)
+        processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npy'
+        if os.path.exists(processed_fname):
+            noisy_preprocessed = np.load(processed_fname)
+        else:
+            #
+            noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
+            # Assuming you have a function to perform Fourier transform on x
+            noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
+            noisy_images = noisy_images.astype(np.float32)
+            noisy_preprocessed = self.__preprocess_1bseries(noisy_images)
+            #
+            np.save(processed_fname, noisy_preprocessed)
         return noisy_preprocessed
 
     def __preprocess_1bseries(self, noisy_images):
@@ -175,7 +183,8 @@ def display_sample(noisy_images, noiseless_images, param_maps, tissue_images, sa
 
 # 测试代码
 def main():
-    data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/training1/'
+    #data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/training1/'
+    data_dir = 'E:/Data/public_training_data/training2/'
     transform = transforms.Compose([
         NumpyToTensor(),  # 首先将Numpy数组转化为张量
         transforms.RandomHorizontalFlip(),  # 随机水平翻转

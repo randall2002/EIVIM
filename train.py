@@ -2,6 +2,7 @@ import argparse, os
 import zipfile
 import copy
 import torch
+import random
 from IVIM_Dataset import MyDataset, NumpyToTensor
 import numpy as np
 import pandas as pd
@@ -31,15 +32,16 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
 
     for epoch in range(num_epochs):
         since = time.time()
+        print('-' * 40)
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
+
         train_loss = 0.0
         train_num = 0
         val_loss = 0.0
         val_num = 0
         model.train()     # train modality
         for step, batch_data in enumerate(traindataloader):
-            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
             optimizer.zero_grad()
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
@@ -56,11 +58,15 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
         train_loss_all.append(train_loss / train_num)
         print('{} Train Loss:{:.4f}'.format(epoch, train_loss_all[-1]))
 
+        time_use1 = time.time() - since
+        print("train complete in {:.0f}m {:.0f}s".format(time_use1 // 60, time_use1 % 60))
+        since2 = time.time()
+
         # 计算一个epoch训练后在验证集上的损失
         model.eval()
 
         for step, batch_data in enumerate(valdataloader):
-            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image) = batch_data
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
             gt_noiseless_images = gt_noiseless_images.float().to(device)
@@ -77,6 +83,9 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
             best_loss = val_loss_all[-1]
             best_model_wts = copy.deepcopy(model.state_dict())
         # 每个epoch花费的时间
+        time_use2 = time.time() - since2
+        print("val complete in {:.0f}m {:.0f}s".format(time_use2 // 60, time_use2 % 60))
+
         time_use = time.time() - since
         print("Train and val complete in {:.0f}m {:.0f}s".format(time_use // 60, time_use % 60))
     
@@ -93,6 +102,17 @@ def main():
     global opt, model
     opt = parser.parse_args()
     print(opt)
+
+    #--------------------------
+    #
+    seed = 143 #设置固定种子，观察程序重复性
+    #seed = random.randint(1, 10000)#使用随机种子，程序每次重新打乱数据
+    torch.manual_seed(seed)
+    use_cuda = True if torch.cuda.is_available() else False
+    if use_cuda:
+        torch.cuda.manual_seed(seed)
+
+
     #---------------------------
 
     train_dir = opt.traindir
