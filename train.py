@@ -98,14 +98,37 @@ def do_evla_for_every_epoch(model, criterion, optimizer, valdataloader):
         in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
-        gt_noiseless_images = gt_noiseless_images.float().to(device)
+        gt_noiseless_images = gt_noiseless_images.to(device)
         out = model(in_noisy_images)  # 傅里叶变换后的图像作为输入
         loss = criterion(out, gt_maps)
         val_loss += loss.item() * len(gt_maps)
         val_count += len(gt_maps)
 
-    return val_loss/val_count
 
+    return val_loss/val_count
+def save_net_train_process(net, train_process, train_dir):
+    #规范路径：
+    norm_train_dir1 = os.path.normpath(train_dir)
+    # 构建结果目录路径
+    net_dir = os.path.join(os.path.dirname(norm_train_dir1), "net")
+    # 确保结果目录存在，如果不存在，则创建它
+    if not os.path.exists(net_dir):
+        os.makedirs(net_dir)
+    net_path = os.path.join(net_dir, "U_net.pkl")
+    torch.save(net.state_dict(), net_path)
+
+    #-----------------------------------------------------
+    # 构建结果目录路径
+    result_dir = os.path.join(os.path.dirname(norm_train_dir1), "result")
+    # 确保结果目录存在，如果不存在，则创建它
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
+
+    # 构建最终的CSV文件路径
+    train_process_result = os.path.join(result_dir, "result.csv")
+
+    # 将DataFrame保存到CSV文件
+    train_process.to_csv(train_process_result, index=False)
 ##################################################
 def main():
 
@@ -147,12 +170,8 @@ def main():
     criterion = nn.MSELoss(reduction='mean')
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
     # 对模型迭代训练，所有数据训练epoch轮
-    net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
-    # 保存训练好的网络 U_Net
-    torch.save(net.state_dict(), "U_Net.pkl")
-
-
-
+    net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=5)
+    save_net_train_process(net, train_process, train_dir)
 
 if __name__ == '__main__':
     main()
