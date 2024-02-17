@@ -64,7 +64,7 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
     train_process = pd.DataFrame(
         data={"epoch":range(num_epochs),
               "train_loss_all":train_loss_all,
-              "vall_loss_all":val_loss_all})
+              "val_loss_all":val_loss_all})
     # 输出最好的模型
     model.load_state_dict(best_model_wts)
     return model, train_process
@@ -170,7 +170,7 @@ def main():
     criterion = nn.MSELoss(reduction='mean')
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
     # 对模型迭代训练，所有数据训练epoch轮
-    net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=5)
+    net, train_process = train_model(unet, criterion, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
     save_net_train_process(net, train_process, train_dir)
 
 if __name__ == '__main__':

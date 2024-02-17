@@ -12,8 +12,8 @@ df = pd.read_csv(train_process_result)
 
 # Plot
 plt.figure(figsize=(10, 5))
-plt.plot(df["Epoch"], df["Train Loss"], label='Train Loss')
-plt.plot(df["Epoch"], df["Validation Loss"], label='Validation Loss')
+plt.plot(df["epoch"], df["train_loss_all"], label='Train Loss')
+plt.plot(df["epoch"], df["val_loss_all"], label='Validation Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Training and Validation Loss')
