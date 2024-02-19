@@ -9,7 +9,7 @@ import pandas as pd
 import time
 from torch import nn
 import torch.optim as optim
-from criterion import param_loss
+from criterion import param_loss, rRMSE_per_batch
 from functions_and_demo import read_data
 from model import U_Net
 import torchvision.transforms as transforms
@@ -27,28 +27,33 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
     best_loss =  float('inf')
     train_loss_all = []
     train_acc_all = []
+    train_rRMSE_all = []
     val_loss_all = []
     val_acc_all = []
+    val_rRMSE_all = []
+    
 
     for epoch in range(num_epochs):
         since = time.time()
         print('-' * 40)
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
 
-        train_loss_sample = do_train_for_every_epoch(model, criterion, optimizer, traindataloader)
+        train_loss_case, train_rRMSE_case = do_train_for_every_epoch(model, criterion, optimizer, traindataloader)
         # 把每一次epoch在训练集上的样本平均损失 添加到列表里
-        train_loss_all.append( train_loss_sample )
-        print('{} Train Loss:{:.4f}'.format(epoch, train_loss_sample))
+        train_loss_all.append( train_loss_case )
+        train_rRMSE_all.append(train_rRMSE_case)
+        print('{} Train Loss:{:.4f}'.format(epoch, train_loss_case))
 
         time_use1 = time.time() - since
         print("train complete in {:.0f}m {:.0f}s".format(time_use1 // 60, time_use1 % 60))
         since2 = time.time()
 
-        val_loss_sample = do_evla_for_every_epoch(model, criterion, optimizer, valdataloader)
+        val_loss_case, val_rRMSE_case = do_evla_for_every_epoch(model, criterion, optimizer, valdataloader)
 
         # 计算一个epoch在验证集上的精度和损失
-        val_loss_all.append(val_loss_sample)
-        print('{} Val Loss:{:.4f}'.format(epoch, val_loss_sample))
+        val_loss_all.append(val_loss_case)
+        val_rRMSE_all.append(val_rRMSE_case)
+        print('{} Val Loss:{:.4f}'.format(epoch, val_loss_case))
 
         # 保存最好的网络参数
         if val_loss_all[-1] < best_loss:
@@ -64,7 +69,9 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
     train_process = pd.DataFrame(
         data={"epoch":range(num_epochs),
               "train_loss_all":train_loss_all,
-              "val_loss_all":val_loss_all})
+              "val_loss_all":val_loss_all,
+              "train_rRMSE_all": train_rRMSE_all,
+              "val_rRMSE_all": val_rRMSE_all})
     # 输出最好的模型
     model.load_state_dict(best_model_wts)
     return model, train_process
@@ -72,6 +79,7 @@ def train_model(model, criterion, optimizer, traindataloader, valdataloader, num
 
 def do_train_for_every_epoch(model, criterion, optimizer, traindataloader):
     train_loss = 0.0#训练集上的总损失；
+    train_rRMSE = 0.0#训练集上的总rRMSE
     train_count = 0#训练集总样本数, num会有歧义（能表示序号和总数）
     model.train()  # train modality
     for step, batch_data in enumerate(traindataloader):
@@ -87,11 +95,18 @@ def do_train_for_every_epoch(model, criterion, optimizer, traindataloader):
         optimizer.step()
         train_loss += loss.item() * len(gt_maps)
         train_count += len(gt_maps)
+        #--------------------------------------
+        rRMSE, rRMSE_t = rRMSE_per_batch(out.detach(), gt_maps.detach(), tissue_image.detach())
+        train_rRMSE += rRMSE.item() * len(gt_maps)
+        #--------------------------
 
-    return train_loss/train_count #返回平均损失
+
+
+    return train_loss/train_count, train_rRMSE/train_count #返回平均损失, 平均rRMSE
 
 def do_evla_for_every_epoch(model, criterion, optimizer, valdataloader):
     val_loss = 0.0#验证集上的总损失
+    val_rRMSE = 0.0#验证集上的总rRMSE
     val_count = 0 #验证集样本数
     model.eval()
     for step, batch_data in enumerate(valdataloader):
@@ -104,8 +119,14 @@ def do_evla_for_every_epoch(model, criterion, optimizer, valdataloader):
         val_loss += loss.item() * len(gt_maps)
         val_count += len(gt_maps)
 
+        # --------------------------------------
+        #对比评估标准。
+        rRMSE, rRMSE_t = rRMSE_per_batch(out.detach(), gt_maps.detach(), tissue_image.detach())
+        val_rRMSE += rRMSE.item() * len(gt_maps)
+        # --------------------------
 
-    return val_loss/val_count
+
+    return val_loss/val_count, val_rRMSE/val_count
 def save_net_train_process(net, train_process, train_dir):
     #规范路径：
     norm_train_dir1 = os.path.normpath(train_dir)
