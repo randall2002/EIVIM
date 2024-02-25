@@ -31,10 +31,12 @@ class MyDataset(Dataset):
         return self.count
 
     def __getitem__(self, index):
-        noisy_images = self.load_noisy_images(index)
+
+        tissue_image = self.load_tissue_image(index)
+        noisy_images = self.load_noisy_images(index, tissue_image)
         param_maps = self.load_param_maps(index)
         noiseless_images = self.load_noiseless_images(index)
-        tissue_images = self.load_tissue_images(index)
+
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
@@ -49,24 +51,25 @@ class MyDataset(Dataset):
             noisy_images = self.apply_transform(noisy_images, angle, flip)
             noiseless_images = self.apply_transform(noiseless_images, angle, flip)
             param_maps = self.apply_transform(param_maps, angle, flip)  # 同样对参数图应用增强
-            tissue_images = self.apply_transform(tissue_images, angle, flip) 
+            tissue_image = self.apply_transform(tissue_image, angle, flip)
         else:
             numpy_to_tensor = NumpyToTensor()
             noisy_images = numpy_to_tensor(noisy_images)
             noiseless_images = numpy_to_tensor(noiseless_images)
             param_maps = numpy_to_tensor(param_maps)
-            tissue_images = torch.from_numpy(tissue_images)
+            tissue_image = torch.from_numpy(tissue_image)
 
         # 返回样本和标签数据
-        return noisy_images, (param_maps, noiseless_images, tissue_images), index + self.start_index
+        return noisy_images, (param_maps, noiseless_images, tissue_image), index + self.start_index
 
-    def load_noisy_images(self, index):
+    def load_noisy_images(self, index, tissue_image):
         # 加载带噪声的图像
         i = index + self.start_index
         #
         fname_without_ext, _ = os.path.splitext(self.fname_noisyDWIk)
         processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npy'
-        if os.path.exists(processed_fname):
+        refresh = True
+        if not refresh and os.path.exists(processed_fname):
             noisy_preprocessed = np.load(processed_fname)
         else:
             #
@@ -74,14 +77,31 @@ class MyDataset(Dataset):
             # Assuming you have a function to perform Fourier transform on x
             noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
             noisy_images = noisy_images.astype(np.float32)
-            noisy_preprocessed = self.__preprocess_1bseries(noisy_images)
+            noisy_preprocessed = self.__preprocess_1bseries(noisy_images, tissue_image)
             #
             np.save(processed_fname, noisy_preprocessed)
         return noisy_preprocessed
 
-    def __preprocess_1bseries(self, noisy_images):
+    def __preprocess_1bseries(self, noisy_images, tissue_image):
 
-        pass
+        noisy_images = self.__setzero_outsidecavity(noisy_images, tissue_image)
+
+        # 计算首个b值图像的全局均值sk
+        sk = np.mean(noisy_images[:, :, 0])
+        # 对每个像素的信号除以sk
+        noisy_images /= sk
+        #-------------
+        #当使用这种归一化的预处理数据进行训练时，如果网络输出包括预测的s0，最终的输出s0需要进行反归一化（即：乘以sk)
+        #--------------
+
+        return noisy_images
+
+    def __setzero_outsidecavity(self, noisy_images, tissue_image):
+        # 空气区域设置为False，其他区域设置为True
+        tissue_mask = np.where(tissue_image == 1, False, True)
+        #将二维mask扩展到三维，
+        tissue_mask = np.repeat(tissue_mask[:, :, np.newaxis], noisy_images.shape[2], axis=2)
+        noisy_images[~tissue_mask] = 0 #False区域（空气）置零。
         return noisy_images
 
     def load_param_maps(self, index):
@@ -99,12 +119,12 @@ class MyDataset(Dataset):
         noiseless_images = noiseless_images.astype(np.float32)
         return noiseless_images
     
-    def load_tissue_images(self, index):
+    def load_tissue_image(self, index): #改成单数，因为每个样本只有一个image
         # 加载组织图
         i = index + self.start_index
         data = self.__read_data(self.data_dir, self.fname_tissue, i)
-        tissue_images = data
-        return tissue_images
+        tissue_image = data
+        return tissue_image
 
     def __get_start_number_and_count(self, data_dir, file_name):
         # 获取所有符合条件的文件名
