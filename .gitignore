@@ -7,6 +7,6 @@ temp.py
 .idea/*.xml
 .idea/*.iml
 .idea/inspectionProfiles/*.xml
-__pycache__/*.pyc
+__pycache__/
 backup/*.*
-U_Net.pkl
+*.pkl
