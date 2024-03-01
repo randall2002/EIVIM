@@ -9,3 +9,4 @@ temp.py
 .idea/inspectionProfiles/*.xml
 __pycache__/*.pyc
 backup/*.*
+U_Net.pkl

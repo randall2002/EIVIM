@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import os
 
 # 构建结果目录路径
-train_dir = "E:/Data/public_training_data/training1/"
+# train_dir = "E:/Data/public_training_data/training1/"
+train_dir = "/homes/lwjiang/Data/IVIM/public_training_data/training1/"
 norm_train_dir1 = os.path.normpath(train_dir)
 train_process_result = os.path.join(os.path.dirname(norm_train_dir1), "result/result.csv")
 

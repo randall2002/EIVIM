@@ -14,10 +14,12 @@ from functions_and_demo import read_data
 from model import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
 parser.add_argument("--traindir", default="/homes/lwjiang/Data/IVIM/public_training_data/training1/", type=str, help="training data path")
 parser.add_argument("--validdir", default="/homes/lwjiang/Data/IVIM/public_training_data/training2/", type=str, help="validating data path")
+parser.add_argument("--batchsize", default=4, type=int)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -82,7 +84,7 @@ def do_train_for_every_epoch(model, criterion, optimizer, traindataloader):
     train_rRMSE = 0.0#训练集上的总rRMSE
     train_count = 0#训练集总样本数, num会有歧义（能表示序号和总数）
     model.train()  # train modality
-    for step, batch_data in enumerate(traindataloader):
+    for step, batch_data in tqdm(enumerate(traindataloader)):
         in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
         optimizer.zero_grad()
         in_noisy_images = in_noisy_images.to(device)
@@ -109,7 +111,7 @@ def do_evla_for_every_epoch(model, criterion, optimizer, valdataloader):
     val_rRMSE = 0.0#验证集上的总rRMSE
     val_count = 0 #验证集样本数
     model.eval()
-    for step, batch_data in enumerate(valdataloader):
+    for step, batch_data in tqdm(enumerate(valdataloader)):
         in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
@@ -181,8 +183,8 @@ def main():
     train_dataset = MyDataset(train_dir, transform=None) #数据在线增强暂时不选。
     valid_dataset = MyDataset(valid_dir, transform=None)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-    valid_dataloader = DataLoader(valid_dataset, batch_size=4, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=opt.batchsize, shuffle=True)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=opt.batchsize, shuffle=False)
 
     #--------------------------
     unet = U_Net(in_ch=8, out_ch=3).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
