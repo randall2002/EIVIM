@@ -85,14 +85,17 @@ def do_train_for_every_epoch(model, criterion, optimizer, traindataloader):
     train_count = 0#训练集总样本数, num会有歧义（能表示序号和总数）
     model.train()  # train modality
     for step, batch_data in enumerate(tqdm(traindataloader)):
-        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
+        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
+        print(gt_noiseless_images.size())
         optimizer.zero_grad()
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
         gt_noiseless_images = gt_noiseless_images.to(device)
+        s0_images = s0_images.to(device)
 
         out = model(in_noisy_images)
-        loss = criterion(out, gt_maps)  # 可能网络需要输出s0,并把S0跟无噪图相比完善loss.
+        print(out.size())
+        loss = criterion(out[:, :3, :, :], gt_maps) / 2 + criterion(out[:, 3, :, :], s0_images) # 可能网络需要输出s0,并把S0跟无噪图相比完善loss.
         loss.backward()
         optimizer.step()
         train_loss += loss.item() * len(gt_maps)
@@ -112,12 +115,13 @@ def do_evla_for_every_epoch(model, criterion, optimizer, valdataloader):
     val_count = 0 #验证集样本数
     model.eval()
     for step, batch_data in enumerate(tqdm(valdataloader)):
-        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
+        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
         gt_noiseless_images = gt_noiseless_images.to(device)
+        s0_images = s0_images.to(device)
         out = model(in_noisy_images)  # 傅里叶变换后的图像作为输入
-        loss = criterion(out, gt_maps)
+        loss = criterion(out[:, :3, :, :], gt_maps) / 2 + criterion(out[:, 3, :, :], s0_images)
         val_loss += loss.item() * len(gt_maps)
         val_count += len(gt_maps)
 
@@ -187,7 +191,7 @@ def main():
     valid_dataloader = DataLoader(valid_dataset, batch_size=opt.batchsize, shuffle=False)
 
     #--------------------------
-    unet = U_Net(in_ch=8, out_ch=3).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
+    unet = U_Net(in_ch=8, out_ch=4).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
     #定义损失函数和优化器
     LR = 0.003
     criterion = nn.MSELoss(reduction='mean')
