@@ -68,8 +68,10 @@ class MyDataset(Dataset):
         #
         fname_without_ext, _ = os.path.splitext(self.fname_noisyDWIk)
         processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npy'
-        refresh = True
-        if not refresh and os.path.exists(processed_fname):
+        #refresh = True
+        #if not refresh and os.path.exists(processed_fname):
+        #不使用刷新机制，因为需要改写代码；使用删除数据机制：如果预处理代码改动，删除原来的预处理数据触发预处理流程。
+        if os.path.exists(processed_fname):
             noisy_preprocessed = np.load(processed_fname)
         else:
             #
