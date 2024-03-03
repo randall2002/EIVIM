@@ -15,6 +15,7 @@ from model import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+import utility
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
 parser.add_argument("--traindir", default="/homes/lwjiang/Data/IVIM/public_training_data/training1/", type=str, help="training data path")
@@ -30,7 +31,7 @@ def custom_loss(output, gt_maps, s0_images, alpha):
     s0_loss = criterion(output[:, 3, :, :], s0_images)
     return (1 - alpha) * param_loss + alpha * s0_loss
 
-def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25):
+def train_model(model, alpha, optimizer, traindataloader, valdataloader, num_epochs=25):
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss =  float('inf')
@@ -41,12 +42,11 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
     val_acc_all = []
     val_rRMSE_all = []
     
-    #alpha为损失函数的调节参数，暂时固定。
-    alpha = 0
+
     for epoch in range(num_epochs):
         since = time.time()
         print('-' * 40)
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('Epoch： {}/{}， alpha: {:.2f}'.format(epoch, num_epochs - 1, alpha))
 
         train_loss_case, train_rRMSE_case = do_train_for_every_epoch(model, alpha, optimizer, traindataloader)
         # 把每一次epoch在训练集上的样本平均损失 添加到列表里
@@ -142,7 +142,7 @@ def do_evla_for_every_epoch(model, alpha, valdataloader):
 
 
     return val_loss/val_count, val_rRMSE/val_count
-def save_net_train_process(net, train_process, train_dir):
+def save_net_train_process(net, train_process, train_dir, alpha):
     #规范路径：
     norm_train_dir1 = os.path.normpath(train_dir)
     # 构建结果目录路径
@@ -150,7 +150,8 @@ def save_net_train_process(net, train_process, train_dir):
     # 确保结果目录存在，如果不存在，则创建它
     if not os.path.exists(net_dir):
         os.makedirs(net_dir)
-    net_path = os.path.join(net_dir, "U_net.pkl")
+    net_filename = utility.generate_filename_with_identifier("U_net.pkl", 'alpha', alpha)
+    net_path = os.path.join(net_dir, net_filename)
     torch.save(net.state_dict(), net_path)
 
     #-----------------------------------------------------
@@ -161,7 +162,8 @@ def save_net_train_process(net, train_process, train_dir):
         os.makedirs(result_dir)
 
     # 构建最终的CSV文件路径
-    train_process_result = os.path.join(result_dir, "result.csv")
+    result_filename = utility.generate_filename_with_identifier("result.csv", 'alpha', alpha)
+    train_process_result = os.path.join(result_dir, result_filename)
 
     # 将DataFrame保存到CSV文件
     train_process.to_csv(train_process_result, index=False)
@@ -200,15 +202,19 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=opt.batchsize, shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, batch_size=opt.batchsize, shuffle=False)
 
-    #--------------------------
-    unet = U_Net(in_ch=8, out_ch=4).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
-    #定义损失函数和优化器
-    LR = 0.003
+    # 定义一系列alpha值
+    alpha_values = [0.0, 0.25, 0.5, 0.75, 1.0]
 
-    optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
-    # 对模型迭代训练，所有数据训练epoch轮
-    net, train_process = train_model(unet, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
-    save_net_train_process(net, train_process, train_dir)
+    for alpha in alpha_values:
+        #--------------------------
+        model = U_Net(in_ch=8, out_ch=4).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
+        #定义损失函数和优化器
+        LR = 0.003
+
+        optimizer = optim.Adam(model.parameters(), lr=LR,  weight_decay=0)
+        # 对模型迭代训练，所有数据训练epoch轮
+        net, train_process = train_model(model, alpha, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
+        save_net_train_process(net, train_process, train_dir, alpha)
 
 if __name__ == '__main__':
     main()
