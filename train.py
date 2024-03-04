@@ -84,7 +84,7 @@ def train_model(model, alpha, optimizer, traindataloader, valdataloader, num_epo
               "val_rRMSE_all": val_rRMSE_all})
     # 输出最好的模型
     model.load_state_dict(best_model_wts)
-    return model, train_process
+    return model, train_process, best_loss
 
 
 def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
@@ -166,7 +166,17 @@ def save_net_train_process(net, train_process, train_dir, alpha):
     train_process_result = os.path.join(result_dir, result_filename)
 
     # 将DataFrame保存到CSV文件
-    train_process.to_csv(train_process_result, index=False)
+    #train_process.to_csv(train_process_result, index=False)
+    try:
+        train_process.to_csv(train_process_result, index=False)
+    except PermissionError:
+        print(f"无法保存到 {train_process_result}。文件可能被其他程序占用。请关闭其他程序后再次尝试。")
+        input("请关闭占用文件的程序后按Enter键继续...")
+        try:
+            train_process.to_csv(train_process_result, index=False)
+            print(f"文件已成功保存至：{train_process_result}")
+        except PermissionError:
+            print(f"仍然无法保存到 {train_process_result}。请检查文件权限和占用情况。")
 ##################################################
 
 def main():
@@ -205,6 +215,10 @@ def main():
     # 定义一系列alpha值
     alpha_values = [0.0, 0.25, 0.5, 0.75, 1.0]
 
+    best_alpha = None
+    best_loss = float('inf') #注意：不同的循环层次的最优值有不同的含义。
+    alpha_info = []
+
     for alpha in alpha_values:
         #--------------------------
         model = U_Net(in_ch=8, out_ch=4).to(device) #1,设法读取数据后实例化模型；2，需要考虑s0是否送入网络。
@@ -213,8 +227,24 @@ def main():
 
         optimizer = optim.Adam(model.parameters(), lr=LR,  weight_decay=0)
         # 对模型迭代训练，所有数据训练epoch轮
-        net, train_process = train_model(model, alpha, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
+        net, train_process, loss = train_model(model, alpha, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
         save_net_train_process(net, train_process, train_dir, alpha)
+
+        #记录所有alpha及对应的loss信息；
+        alpha_info.append({'alpha':alpha, 'loss':loss})
+
+        if loss < best_loss:
+            best_alpha = alpha
+            best_loss = loss
+
+    alpha_info.append({'best alpha':best_alpha, 'best loss':best_loss})
+
+    #保存alpha 和相应的loss为csv文件，标识列明：alpha, loss, best alpha, best loss;
+    norm_train_dir1 = os.path.normpath(train_dir)
+
+    utility.save_alpha_info(alpha_info, os.path.dirname(norm_train_dir1))
+
+
 
 if __name__ == '__main__':
     main()
