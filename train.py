@@ -25,11 +25,45 @@ parser.add_argument("--batchsize", default=4, type=int)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Custom loss function
-def custom_loss(output, gt_maps, s0_images, alpha):
+#注意：这里的数据入口参数数据维度，跟数据集返回的维度不同：经过loader处理后，增加了一个batch维（第0维）。
+def custom_loss(output, gt_maps, gt_noiseless_images, alpha):
+
+
+    s0_images = gt_noiseless_images[:, 0, :, :]
     criterion = nn.MSELoss(reduction='mean')
     param_loss = criterion(output[:, :3, :, :], gt_maps)
     s0_loss = criterion(output[:, 3, :, :], s0_images)
     return (1 - alpha) * param_loss + alpha * s0_loss
+
+#损失函数第二方案：
+#重写模型函数，输入改成pytorch张量，支持梯度反向传播
+def bi_exp(b_values, f, Dt, Ds, s0):
+    exp_term_1 = torch.exp(-Dt * b_values)
+    exp_term_2 = torch.exp(-Ds * b_values)
+    return s0 * ((1. - f) * exp_term_1 + f * exp_term_2)
+
+def custom_loss2(output, gt_maps, gt_noiseless_images, alpha):
+
+    #b值来自官方functions_and_demo.py
+    b_values = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
+
+    criterion = torch.nn.MSELoss(reduction='mean')
+    #把三个通道数据拆分：在dim=1维度上拆分，拆分大小=1；得到的数据维度是：[batch_size, 1, height,width]
+    f, Dt, Ds = torch.split(output[:, :3, :, :], 1, dim=1)
+    predicted_s0 = output[:, 3, :, :].unsqueeze(1)  # 确保s0的形状为[batch_size, 1, height, width]
+
+    # 重建b系列图像
+    predicted_b_series = bi_exp(b_values, f, Dt, Ds, predicted_s0)
+
+    # 计算参数图的损失
+    param_loss = criterion(output[:, :3, :, :], gt_maps)
+
+    # 计算b系列图像的损失
+    b_series_loss = criterion(predicted_b_series, gt_noiseless_images)
+
+    total_loss = (1 - alpha) * param_loss + alpha * b_series_loss
+    return total_loss
+
 
 def train_model(model, alpha, optimizer, traindataloader, valdataloader, num_epochs=25):
 
@@ -93,17 +127,16 @@ def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
     train_count = 0#训练集总样本数, num会有歧义（能表示序号和总数）
     model.train()  # train modality
     for step, batch_data in enumerate(tqdm(traindataloader)):
-        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
+        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
         #print(gt_noiseless_images.size())
         optimizer.zero_grad()
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
         gt_noiseless_images = gt_noiseless_images.to(device)
-        s0_images = s0_images.to(device)
 
         out = model(in_noisy_images)
         #print(out.size())
-        loss = custom_loss(out, gt_maps, s0_images, alpha)
+        loss = custom_loss(out, gt_maps, gt_noiseless_images, alpha)
         loss.backward()
         optimizer.step()
         train_loss += loss.item() * len(gt_maps)
@@ -124,13 +157,12 @@ def do_evla_for_every_epoch(model, alpha, valdataloader):
     model.eval()
     with torch.no_grad():
         for step, batch_data in enumerate(tqdm(valdataloader)):
-            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
             gt_noiseless_images = gt_noiseless_images.to(device)
-            s0_images = s0_images.to(device)
             out = model(in_noisy_images)  # 傅里叶变换后的图像作为输入
-            loss = custom_loss(out, gt_maps, s0_images, alpha)
+            loss = custom_loss(out, gt_maps, gt_noiseless_images, alpha)
             val_loss += loss.item() * len(gt_maps)
             val_count += len(gt_maps)
 

@@ -59,7 +59,7 @@ class MyDataset(Dataset):
             tissue_image = torch.from_numpy(tissue_image)
 
         # 返回样本和标签数据
-        return noisy_images, (param_maps, noiseless_images, tissue_image, noiseless_images[0,:,:]), index + self.start_index
+        return noisy_images, (param_maps, noiseless_images, tissue_image), index + self.start_index
 
     def load_noisy_images(self, index, tissue_image):
         # 加载带噪声的图像
