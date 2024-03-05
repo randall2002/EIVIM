@@ -33,10 +33,9 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
 
         tissue_image = self.load_tissue_image(index)
-        noisy_images = self.load_noisy_images(index, tissue_image)
+        noisy_images, sk = self.load_noisy_images(index, tissue_image)
         param_maps = self.load_param_maps(index)
-        noiseless_images = self.load_noiseless_images(index)
-
+        noiseless_images = self.load_noiseless_images(index) / sk
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
@@ -67,22 +66,26 @@ class MyDataset(Dataset):
         i = index + self.start_index
         #
         fname_without_ext, _ = os.path.splitext(self.fname_noisyDWIk)
-        processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npy'
+        processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npz'
         #refresh = True
         #if not refresh and os.path.exists(processed_fname):
         #不使用刷新机制，因为需要改写代码；使用删除数据机制：如果预处理代码改动，删除原来的预处理数据触发预处理流程。
         if os.path.exists(processed_fname):
-            noisy_preprocessed = np.load(processed_fname)
+            # 如果预处理后的文件存在，则直接加载
+            temp = np.load(processed_fname)
+            noisy_preprocessed = temp['noisy_preprocessed']
+            sk = temp['sk']
+
         else:
-            #
+            # 如果预处理后的文件不存在，则进行预处理
             noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
-            # Assuming you have a function to perform Fourier transform on x
             noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
             noisy_images = noisy_images.astype(np.float32)
-            noisy_preprocessed = self.__preprocess_1bseries(noisy_images, tissue_image)
-            #
-            np.save(processed_fname, noisy_preprocessed)
-        return noisy_preprocessed
+            noisy_preprocessed, sk = self.__preprocess_1bseries(noisy_images, tissue_image)
+            # 保存预处理后的数据和sk值
+            np.savez(processed_fname, noisy_preprocessed=noisy_preprocessed, sk=sk)
+
+        return noisy_preprocessed, sk
 
     def __preprocess_1bseries(self, noisy_images, tissue_image):
 
@@ -92,18 +95,18 @@ class MyDataset(Dataset):
         sk = np.mean(noisy_images[:, :, 0])
         # 对每个像素的信号除以sk
         noisy_images /= sk
-        #-------------
-        #当使用这种归一化的预处理数据进行训练时，如果网络输出包括预测的s0，最终的输出s0需要进行反归一化（即：乘以sk)
-        #--------------
+        # -------------
+        # 当使用这种归一化的预处理数据进行训练时，相应的无噪b系列图像也需要做同样的归一化。
+        # --------------
 
-        return noisy_images
+        return noisy_images, sk
 
     def __setzero_outsidecavity(self, noisy_images, tissue_image):
         # 空气区域设置为False，其他区域设置为True
         tissue_mask = np.where(tissue_image == 1, False, True)
-        #将二维mask扩展到三维，
+        # 将二维mask扩展到三维，
         tissue_mask = np.repeat(tissue_mask[:, :, np.newaxis], noisy_images.shape[2], axis=2)
-        noisy_images[~tissue_mask] = 0 #False区域（空气）置零。
+        noisy_images[~tissue_mask] = 0  # False区域（空气）置零。
         return noisy_images
 
     def load_param_maps(self, index):
@@ -120,8 +123,8 @@ class MyDataset(Dataset):
         noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
         noiseless_images = noiseless_images.astype(np.float32)
         return noiseless_images
-    
-    def load_tissue_image(self, index): #改成单数，因为每个样本只有一个image
+
+    def load_tissue_image(self, index):  # 改成单数，因为每个样本只有一个image
         # 加载组织图
         i = index + self.start_index
         data = self.__read_data(self.data_dir, self.fname_tissue, i)
@@ -170,9 +173,9 @@ class MyDataset(Dataset):
         return transformed_image
 
 
-
 # 测试代码；
 import matplotlib.pyplot as plt
+
 
 # 辅助函数，用于显示图像
 def display_sample(noisy_images, noiseless_images, param_maps, tissue_images, sample_index, data_source):
@@ -180,7 +183,6 @@ def display_sample(noisy_images, noiseless_images, param_maps, tissue_images, sa
     fig, axs = plt.subplots(3, max(num_b_values, 3), figsize=(15, 6))
 
     for i in range(num_b_values):
-
         axs[0, i].imshow(noisy_images[i, :, :], cmap='gray')
         axs[0, i].set_title(f'Noisy b={i}')
         axs[0, i].axis('off')
@@ -203,9 +205,10 @@ def display_sample(noisy_images, noiseless_images, param_maps, tissue_images, sa
     plt.show()
     plt.savefig('case.png')
 
+
 # 测试代码
 def main():
-    #data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/training1/'
+    # data_dir = '/homes/lwjiang/Data/IVIM/public_training_data/training1/'
     data_dir = 'E:/Data/public_training_data/training2/'
     transform = transforms.Compose([
         NumpyToTensor(),  # 首先将Numpy数组转化为张量
@@ -218,8 +221,8 @@ def main():
     dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
 
     # 加载一个批次的数据并显示一个样本
-    for step, (noisy_images, (param_maps, noiseless_images, tissue_images), sample_indices)  in enumerate(dataloader):
-        if step == 10: #显示指定批次
+    for step, (noisy_images, (param_maps, noiseless_images, tissue_images), sample_indices) in enumerate(dataloader):
+        if step == 10:  # 显示指定批次
             # 只显示第一个样本
 
             noisy_image = noisy_images[0].numpy()
@@ -238,10 +241,10 @@ def main():
 
 if __name__ == '__main__':
     main()
-#实例化移到train.py
-#Create training dataset and dataloader
-#train_dataset = MyDataset(file_dir, fname_noisyDWIk, 1, num_train_cases)
-#train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+# 实例化移到train.py
+# Create training dataset and dataloader
+# train_dataset = MyDataset(file_dir, fname_noisyDWIk, 1, num_train_cases)
+# train_dataloader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 # Create validation dataset and dataloader
-#val_dataset = MyDataset(file_dir, fname_noisyDWIk, num_train_cases + 1, num_train_cases + num_val_cases)
-#val_dataloader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+# val_dataset = MyDataset(file_dir, fname_noisyDWIk, num_train_cases + 1, num_train_cases + num_val_cases)
+# val_dataloader = DataLoader(val_dataset, batch_size=4, shuffle=False)
