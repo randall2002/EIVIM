@@ -6,20 +6,30 @@ import os
 # train_dir = "E:/Data/public_training_data/training1/"
 train_dir = "/homes/lwjiang/Data/IVIM/public_training_data/training1/"
 norm_train_dir1 = os.path.normpath(train_dir)
-train_process_result = os.path.join(os.path.dirname(norm_train_dir1), "result/result.csv")
+train_process_result = os.path.join(os.path.dirname(norm_train_dir1), "result/result_alpha_0_00.csv")
 
 # Load the data
 df = pd.read_csv(train_process_result)
 
 # Plot
 plt.figure(figsize=(10, 5))
-plt.plot(df["epoch"], df["train_loss_all"], label='Train Loss')
-plt.plot(df["epoch"], df["val_loss_all"], label='Validation Loss')
-#plt.plot(df["epoch"], df["train_rRMSE_all"], label='Train rRMSE')
-#plt.plot(df["epoch"], df["val_rRMSE_all"], label='Validation rRMSE')
-
+# plot train or val loss
+plt.subplot(1, 2, 1)
+plt.plot(df["epoch"].values, df["train_loss_all"].values, label='Train Loss')
+plt.plot(df["epoch"].values, df["val_loss_all"].values, label='Validation Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
-plt.title('Training and Validation Loss&rRMSE')
+plt.title('Training and Validation Loss')
+
+# plot train or val rMSE
+plt.subplot(1, 2, 2)
+plt.plot(df["epoch"].values, df["train_rRMSE_all"].values, label='Train rRMSE')
+plt.plot(df["epoch"].values, df["val_rRMSE_all"].values, label='Validation rRMSE')
+plt.xlabel('Epoch')
+plt.ylabel('rRMSE')
+plt.title('Training and Validation rRMSE')
+
 plt.legend()
 plt.show()
+plt.savefig(os.path.join("/homes/lwjiang/Data/IVIM/public_training_data/result/","Loss&rRMSE.png"))
+
