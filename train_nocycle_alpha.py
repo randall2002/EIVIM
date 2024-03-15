@@ -24,7 +24,8 @@ parser.add_argument("--batchsize", default=4, type=int)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Custom loss function
-def custom_loss(output, gt_maps, s0_images, alpha):
+def custom_loss(output, gt_maps, gt_noiseless_images, alpha):
+    s0_images = gt_noiseless_images[:, 0, :, :]
     criterion = nn.MSELoss(reduction='mean')
     param_loss = criterion(output[:, :3, :, :], gt_maps)
     s0_loss = criterion(output[:, 3, :, :], s0_images)
@@ -34,6 +35,7 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss =  float('inf')
+    best_out = []
     train_loss_all = []
     train_acc_all = []
     train_rRMSE_all = []
@@ -69,6 +71,11 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
         if val_loss_all[-1] < best_loss:
             best_loss = val_loss_all[-1]
             best_model_wts = copy.deepcopy(model.state_dict())
+        
+        # 保存最好的网络输出参数图
+        best_out = np.concatenate(best_out, axis=0)
+        np.save('homes/lwjiang/Data/IVIM/public_training_data/result/best_output.npy', best_out)
+
         # 每个epoch花费的时间
         time_use2 = time.time() - since2
         print("val complete in {:.0f}m {:.0f}s".format(time_use2 // 60, time_use2 % 60))
@@ -93,17 +100,16 @@ def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
     train_count = 0#训练集总样本数, num会有歧义（能表示序号和总数）
     model.train()  # train modality
     for step, batch_data in enumerate(tqdm(traindataloader)):
-        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
+        in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
         #print(gt_noiseless_images.size())
         optimizer.zero_grad()
         in_noisy_images = in_noisy_images.to(device)
         gt_maps = gt_maps.to(device)
         gt_noiseless_images = gt_noiseless_images.to(device)
-        s0_images = s0_images.to(device)
 
         out = model(in_noisy_images)
         #print(out.size())
-        loss = custom_loss(out, gt_maps, s0_images, alpha)
+        loss = custom_loss(out, gt_maps, gt_noiseless_images, alpha)
         loss.backward()
         optimizer.step()
         train_loss += loss.item() * len(gt_maps)
@@ -124,13 +130,12 @@ def do_evla_for_every_epoch(model, alpha, valdataloader):
     model.eval()
     with torch.no_grad():
         for step, batch_data in enumerate(tqdm(valdataloader)):
-            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image, s0_images), _ = batch_data
+            in_noisy_images, (gt_maps, gt_noiseless_images, tissue_image), _ = batch_data
             in_noisy_images = in_noisy_images.to(device)
             gt_maps = gt_maps.to(device)
             gt_noiseless_images = gt_noiseless_images.to(device)
-            s0_images = s0_images.to(device)
             out = model(in_noisy_images)  # 傅里叶变换后的图像作为输入
-            loss = custom_loss(out, gt_maps, s0_images, alpha)
+            loss = custom_loss(out, gt_maps, gt_noiseless_images, alpha)
             val_loss += loss.item() * len(gt_maps)
             val_count += len(gt_maps)
 
