@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 def display_group(img1, img2, group_index, axs, scale_diff=10, param_name=""):
@@ -32,12 +33,15 @@ def display_group(img1, img2, group_index, axs, scale_diff=10, param_name=""):
     axs[group_index, 2].set_title(f"{param_name} Diffx{scale_diff}", fontsize=title_fontsize)
     axs[group_index, 2].axis('off')
 
-def display_images(img_pairs, param_names, scale_diff=10):
+def display_images(img_pairs, param_names, save_dir='/homes/lwjiang/Data/IVIM/display_diff_images', scale_diff=10):
     num_rows = len(img_pairs)
     fig, axs = plt.subplots(num_rows, 3, figsize=(10, 2 * num_rows))
 
     for i, (img1, img2) in enumerate(img_pairs):
         display_group(img1, img2, i, axs, scale_diff, param_name=param_names[i])
+    filename = os.path.join(save_dir, f'diff_param')
+    plt.savefig(filename)  # 保存图像到文件
+
 
     plt.tight_layout()
     plt.show()
@@ -45,8 +49,11 @@ def display_images(img_pairs, param_names, scale_diff=10):
 #显示参数图预测和真实之差
 def show_params_diff():
 
-    pred_params = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Result/0001.npy')
-    gt_params = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/train/0001_IVIMParam.npy')
+    # pred_params = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Result/0001.npy')
+    # gt_params = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/train/0001_IVIMParam.npy')
+    
+    pred_params = np.load('/homes/lwjiang/Data/IVIM/Result/0001.npy')
+    gt_params = np.load('/homes/lwjiang/Data/IVIM/public_training_data/training1/0001_IVIMParam.npy')
 
     # 将每个参数图像分离出来
     pred_f, pred_Dt, pred_Ds = [pred_params[:, :, i] for i in range(3)]
@@ -61,9 +68,11 @@ def show_params_diff():
 
 #显示图像差：
 def show_dwis_diff():
-    gt_images = np.abs(np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Train/0001_gtDWIs.npy'))
+    # gt_images = np.abs(np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Train/0001_gtDWIs.npy'))
+    gt_images = np.abs(np.load('/homes/lwjiang/Data/IVIM/public_training_data/training1/0001_gtDWIs.npy'))
 
-    noisy_k = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Train/0001_NoisyDWIk.npy')
+    # noisy_k = np.load('D:/PYTHON/PyTorch/others/IVIM-test/Data/Train/0001_NoisyDWIk.npy')
+    noisy_k = np.load('/homes/lwjiang/Data/IVIM/public_training_data/training1/0001_NoisyDWIk.npy')
     noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
     b_values = np.array([0, 5, 50, 100, 200])#, 500, 800, 1000])
     #b_values = np.array([0, 5, 50, 100, 200, 500, 800, 1000])
@@ -93,5 +102,5 @@ def test_main():
 # Example usage
 if __name__ == "__main__":
     #test_main()
-    #show_params_diff()
-    show_dwis_diff()
+    show_params_diff()
+    # show_dwis_diff()
