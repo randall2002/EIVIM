@@ -1,5 +1,5 @@
 # Default ignored files
-*temp.py
+*temp*.py
 *.png
 .zip
 *.py.bak
