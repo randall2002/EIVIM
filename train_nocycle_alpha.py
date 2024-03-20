@@ -11,7 +11,7 @@ from torch import nn
 import torch.optim as optim
 from criterion import param_loss, rRMSE_per_batch
 from functions_and_demo import read_data
-from model import U_Net
+from model_unet import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
@@ -50,7 +50,7 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
         print('-' * 40)
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
 
-        train_loss_case, train_rRMSE_case = do_train_for_every_epoch(model, alpha, optimizer, traindataloader)
+        train_loss_case, train_rRMSE_case, out_param = do_train_for_every_epoch(model, alpha, optimizer, traindataloader)
         # 把每一次epoch在训练集上的样本平均损失 添加到列表里
         train_loss_all.append( train_loss_case )
         train_rRMSE_all.append(train_rRMSE_case)
@@ -72,10 +72,9 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
             best_loss = val_loss_all[-1]
             best_model_wts = copy.deepcopy(model.state_dict())
         
-        # 保存最好的网络输出参数图
-        best_out = np.concatenate(best_out, axis=0)
-        np.save('homes/lwjiang/Data/IVIM/public_training_data/result/best_output.npy', best_out)
-
+            # 保存最好的网络输出参数图
+            best_out = out_param
+        
         # 每个epoch花费的时间
         time_use2 = time.time() - since2
         print("val complete in {:.0f}m {:.0f}s".format(time_use2 // 60, time_use2 % 60))
@@ -89,8 +88,10 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
               "val_loss_all":val_loss_all,
               "train_rRMSE_all": train_rRMSE_all,
               "val_rRMSE_all": val_rRMSE_all})
-    # 输出最好的模型
+    # 输出最好的模型和预测参数图
     model.load_state_dict(best_model_wts)
+    np.save('/homes/lwjiang/Data/IVIM/public_training_data/result/param.npy', best_out)
+
     return model, train_process
 
 
@@ -108,6 +109,7 @@ def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
         gt_noiseless_images = gt_noiseless_images.to(device)
 
         out = model(in_noisy_images)
+        out_param = out
         #print(out.size())
         loss = custom_loss(out, gt_maps, gt_noiseless_images, alpha)
         loss.backward()
@@ -121,7 +123,7 @@ def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
 
 
 
-    return train_loss/train_count, train_rRMSE/train_count #返回平均损失, 平均rRMSE
+    return train_loss/train_count, train_rRMSE/train_count, out_param #返回平均损失, 平均rRMSE, 三幅预测的参数图
 
 def do_evla_for_every_epoch(model, alpha, valdataloader):
     val_loss = 0.0#验证集上的总损失
@@ -212,7 +214,7 @@ def main():
 
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
     # 对模型迭代训练，所有数据训练epoch轮
-    net, train_process = train_model(unet, optimizer, train_dataloader, valid_dataloader, num_epochs=25)
+    net, train_process = train_model(unet, optimizer, train_dataloader, valid_dataloader, num_epochs=3)
     save_net_train_process(net, train_process, train_dir)
 
 if __name__ == '__main__':

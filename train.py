@@ -11,7 +11,7 @@ from torch import nn
 import torch.optim as optim
 from criterion import param_loss, rRMSE_per_batch
 from functions_and_demo import read_data
-from model import U_Net
+from model_unet import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
