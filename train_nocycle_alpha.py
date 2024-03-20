@@ -88,9 +88,13 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
               "val_loss_all":val_loss_all,
               "train_rRMSE_all": train_rRMSE_all,
               "val_rRMSE_all": val_rRMSE_all})
+
+    # 使用detach方法将张量从计算图中分离出来，然后将其移动到CPU上，并转换为NumPy数组          
+    best_out_cpu = best_out.detach().cpu().numpy()
+
     # 输出最好的模型和预测参数图
     model.load_state_dict(best_model_wts)
-    np.save('/homes/lwjiang/Data/IVIM/public_training_data/result/param.npy', best_out)
+    np.save('/homes/lwjiang/Data/IVIM/public_training_data/result/param.npy', best_out_cpu)
 
     return model, train_process
 
@@ -214,7 +218,7 @@ def main():
 
     optimizer = optim.Adam(unet.parameters(), lr=LR,  weight_decay=0)
     # 对模型迭代训练，所有数据训练epoch轮
-    net, train_process = train_model(unet, optimizer, train_dataloader, valid_dataloader, num_epochs=3)
+    net, train_process = train_model(unet, optimizer, train_dataloader, valid_dataloader, num_epochs=300)
     save_net_train_process(net, train_process, train_dir)
 
 if __name__ == '__main__':
