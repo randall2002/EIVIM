@@ -4,15 +4,15 @@ import os
 
 # 构建结果目录路径
 # train_dir = "E:/Data/public_training_data/training1/"
-train_dir = "/homes/lwjiang/Data/IVIM/public_training_data/training1/"
+train_dir = "/homes/lwjiang/Data/IVIM/public_training_data/"
 norm_train_dir1 = os.path.normpath(train_dir)
-train_process_result = os.path.join(os.path.dirname(norm_train_dir1), "result/result_alpha_0_00.csv")
+train_process_result = os.path.join(norm_train_dir1, "result/result.csv")
 
 # Load the data
 df = pd.read_csv(train_process_result)
 
 # Plot
-plt.figure(figsize=(10, 5))
+plt.figure(figsize=(20, 5))
 # plot train or val loss
 plt.subplot(1, 2, 1)
 plt.plot(df["epoch"].values, df["train_loss_all"].values, label='Train Loss')
