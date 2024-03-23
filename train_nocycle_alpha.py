@@ -25,10 +25,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Custom loss function
 def custom_loss(output, gt_maps, gt_noiseless_images, alpha):
-    s0_images = gt_noiseless_images[:, 0, :, :]
+    gt_s0_images = gt_noiseless_images[:, 0, :, :]
     criterion = nn.MSELoss(reduction='mean')
     param_loss = criterion(output[:, :3, :, :], gt_maps)
-    s0_loss = criterion(output[:, 3, :, :], s0_images)
+    s0_loss = criterion(output[:, 3, :, :], gt_s0_images)
     return (1 - alpha) * param_loss + alpha * s0_loss
 
 def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25):
