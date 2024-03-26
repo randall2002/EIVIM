@@ -14,17 +14,14 @@ class NumpyToTensor(object):
         image = np.transpose(sample, (2, 0, 1))
         return torch.from_numpy(image)
 
-class MyDataset(Dataset):
+class MyTestDataset(Dataset):
     def __init__(self, data_dir, transform=None):
         self.data_dir = data_dir
-        self.fname_gt = '_IVIMParam.npy'
-        self.fname_tissue = '_TissueType.npy'
         self.fname_noisyDWIk = '_NoisyDWIk.npy'
-        self.fname_gtDWIs = '_gtDWIs.npy'
         self.transform = transform
 
         self.start_index, self.count = self.__get_start_number_and_count(data_dir, self.fname_noisyDWIk)
-        # self.count = self.count // 20
+
         print(f"Start Number: {self.start_index}, Total Files: {self.count}")
  
     def __len__(self):
@@ -32,10 +29,8 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
 
-        tissue_image = self.load_tissue_image(index)
-        noisy_images, sk = self.load_noisy_images(index, tissue_image)
-        param_maps = self.load_param_maps(index)
-        noiseless_images = self.load_noiseless_images(index) / sk
+        
+        noisy_images, sk = self.load_noisy_images(index)
 
         # 应用数据增强
         #transform会导致维度顺序发生变化，所以改成一致维度。
@@ -48,48 +43,45 @@ class MyDataset(Dataset):
             flip = torch.rand(1) < 0.5  # 随机决定是否翻转
             #应用变换
             noisy_images = self.apply_transform(noisy_images, angle, flip)
-            noiseless_images = self.apply_transform(noiseless_images, angle, flip)
-            param_maps = self.apply_transform(param_maps, angle, flip)  # 同样对参数图应用增强
-            tissue_image = self.apply_transform(tissue_image, angle, flip)
         else:
             numpy_to_tensor = NumpyToTensor()
             noisy_images = numpy_to_tensor(noisy_images)
-            noiseless_images = numpy_to_tensor(noiseless_images)
-            param_maps = numpy_to_tensor(param_maps)
-            tissue_image = torch.from_numpy(tissue_image)
+    
+        if not torch.is_tensor(noisy_images):
+            raise TypeError("Returned data is not a tensor")
 
         # 返回样本和标签数据
-        return noisy_images, (param_maps, noiseless_images, tissue_image), index + self.start_index
+        return noisy_images, index + self.start_index
 
-    def load_noisy_images(self, index, tissue_image):
+    def load_noisy_images(self, index):
         # 加载带噪声的图像
         i = index + self.start_index
         #
         fname_without_ext, _ = os.path.splitext(self.fname_noisyDWIk)
-        processed_fname = self.data_dir + "{:04}".format(i) + fname_without_ext +'_processed.npz'
+        processed_fname =  os.path.join(self.data_dir, "{:04}".format(i) + fname_without_ext + "_processed")
         #refresh = True
         #if not refresh and os.path.exists(processed_fname):
         #不使用刷新机制，因为需要改写代码；使用删除数据机制：如果预处理代码改动，删除原来的预处理数据触发预处理流程。
-        if os.path.exists(processed_fname):
-            # 如果预处理后的文件存在，则直接加载
-            temp = np.load(processed_fname)
-            noisy_preprocessed = temp['noisy_preprocessed']
-            sk = temp['sk']
+        # if os.path.exists(processed_fname):
+        #     # 如果预处理后的文件存在，则直接加载
+        #     temp = np.load(processed_fname)
+        #     noisy_preprocessed = temp['noisy_preprocessed']
+        #     sk = temp['sk']
 
-        else:
+        # else:
             # 如果预处理后的文件不存在，则进行预处理
-            noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
-            noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
-            noisy_images = noisy_images.astype(np.float32)
-            noisy_preprocessed, sk = self.__preprocess_1bseries(noisy_images, tissue_image)
+        noisy_k = self.__read_data(self.data_dir, self.fname_noisyDWIk, i)
+        noisy_images = np.abs(np.fft.ifft2(noisy_k, axes=(0, 1), norm='ortho'))
+        noisy_images = noisy_images.astype(np.float32)
+        noisy_preprocessed, sk = self.__preprocess_1bseries(noisy_images)
             # 保存预处理后的数据和sk值
-            np.savez(processed_fname, noisy_preprocessed=noisy_preprocessed, sk=sk)
+        np.save(processed_fname, noisy_preprocessed, sk)
 
         return noisy_preprocessed, sk
 
-    def __preprocess_1bseries(self, noisy_images, tissue_image):
+    def __preprocess_1bseries(self, noisy_images):
 
-        noisy_images = self.__setzero_outsidecavity(noisy_images, tissue_image)
+
 
         # 计算首个b值图像的全局均值sk
         sk = np.mean(noisy_images[:, :, 0])
@@ -101,35 +93,7 @@ class MyDataset(Dataset):
 
         return noisy_images, sk
 
-    def __setzero_outsidecavity(self, noisy_images, tissue_image):
-        # 空气区域设置为False，其他区域设置为True
-        tissue_mask = np.where(tissue_image == 1, False, True)
-        # 将二维mask扩展到三维，
-        tissue_mask = np.repeat(tissue_mask[:, :, np.newaxis], noisy_images.shape[2], axis=2)
-        noisy_images[~tissue_mask] = 0  # False区域（空气）置零。
-        return noisy_images
 
-    def load_param_maps(self, index):
-        # 加载参数图
-        i = index + self.start_index
-        param_maps = self.__read_data(self.data_dir, self.fname_gt, i)
-        if param_maps.dtype == np.float64:
-            param_maps = param_maps.astype(np.float32)
-        return param_maps
-
-    def load_noiseless_images(self, index):
-        # 加载无噪声空间图
-        i = index + self.start_index
-        noiseless_images = np.abs(self.__read_data(self.data_dir, self.fname_gtDWIs, i))
-        noiseless_images = noiseless_images.astype(np.float32)
-        return noiseless_images
-
-    def load_tissue_image(self, index):  # 改成单数，因为每个样本只有一个image
-        # 加载组织图
-        i = index + self.start_index
-        data = self.__read_data(self.data_dir, self.fname_tissue, i)
-        tissue_image = data
-        return tissue_image
 
     def __get_start_number_and_count(self, data_dir, file_name):
         # 获取所有符合条件的文件名

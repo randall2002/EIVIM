@@ -1,6 +1,7 @@
 import argparse, os
 import zipfile
 import copy
+import time
 import torch
 import random
 from IVIM_Dataset import MyDataset, NumpyToTensor
@@ -15,6 +16,7 @@ from model_unet import U_Net
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
 parser.add_argument("--traindir", default="/homes/lwjiang/Data/IVIM/public_training_data/training1/", type=str, help="training data path")
@@ -42,7 +44,8 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
     val_loss_all = []
     val_acc_all = []
     val_rRMSE_all = []
-    
+    output_dir = f"/homes/lwjiang/Data/IVIM/public_training_data/result_{time.strftime('%M%s')}"
+    tb_writer = SummaryWriter(output_dir)
     #alpha为损失函数的调节参数，暂时固定。
     alpha = 0
     for epoch in range(num_epochs):
@@ -61,7 +64,11 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
         since2 = time.time()
 
         val_loss_case, val_rRMSE_case = do_evla_for_every_epoch(model, alpha, valdataloader)
-
+        writer.add_scalar('Loss/train', train_loss_case, epoch)
+        writer.add_scalar('Loss/valid', val_loss_case, epoch)
+        writer.add_scalar('Metric/train', train_rRMSE_case, epoch)
+        writer.add_scalar('Metric/valid', val_rRMSE_case, epoch)
+         
         # 计算一个epoch在验证集上的精度和损失
         val_loss_all.append(val_loss_case)
         val_rRMSE_all.append(val_rRMSE_case)
@@ -95,7 +102,7 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
     # 输出最好的模型和预测参数图
     model.load_state_dict(best_model_wts)
     np.save('/homes/lwjiang/Data/IVIM/public_training_data/result/param.npy', best_out_cpu)
-
+    writer.close()
     return model, train_process
 
 
@@ -125,8 +132,6 @@ def do_train_for_every_epoch(model, alpha, optimizer, traindataloader):
         train_rRMSE += rRMSE.item() * len(gt_maps)
         #--------------------------
 
-
-
     return train_loss/train_count, train_rRMSE/train_count, out_param #返回平均损失, 平均rRMSE, 三幅预测的参数图
 
 def do_evla_for_every_epoch(model, alpha, valdataloader):
@@ -151,8 +156,9 @@ def do_evla_for_every_epoch(model, alpha, valdataloader):
             val_rRMSE += rRMSE.item() * len(gt_maps)
             # --------------------------
 
-
+    print("val count:", val_count, "gt map len:", len(gt_maps))
     return val_loss/val_count, val_rRMSE/val_count
+
 def save_net_train_process(net, train_process, train_dir):
     #规范路径：
     norm_train_dir1 = os.path.normpath(train_dir)
