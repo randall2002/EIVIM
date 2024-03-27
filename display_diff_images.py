@@ -46,12 +46,12 @@ def display_images(img_pairs, param_names, scale_diff=10):
     return plt
 
 #显示参数图预测和真实之差
-def show_params_diff():
+def show_params_diff(save_fig=True):
 
 
-    if True:#True for jlw
-        pred_params = np.load('/homes/lwjiang/Data/IVIM/Result/0001.npy')
-        gt_params = np.load('/homes/lwjiang/Data/IVIM/public_training_data/training1/0001_IVIMParam.npy')
+    if save_fig:#True for jlw
+        pred_params = np.load('/homes/lwjiang/Data/IVIM/pred_val_bymyself/0001_IVIMParam.npy')
+        gt_params = np.load('/homes/lwjiang/Data/IVIM/public_training_data/training2/0801_IVIMParam.npy')
         save = True
     else:
         pred_params = np.load('D:/PYTHON/PyTorch/IVIM-test/Data/Result/0001.npy')
@@ -69,7 +69,7 @@ def show_params_diff():
 
     plt = display_images(img_pairs, param_names)
     if save:
-        save_dir = '/homes/lwjiang/Data/IVIM/display_diff_images'
+        save_dir = '/homes/lwjiang/Data/IVIM/pred_val_bymyself'
         filename = os.path.join(save_dir, f'diff_param')
         plt.savefig(filename)  # 保存图像到文件
 
@@ -110,5 +110,5 @@ def test_main():
 # Example usage
 if __name__ == "__main__":
     #test_main()
-    show_params_diff()
+    show_params_diff(True)
     #show_dwis_diff()
