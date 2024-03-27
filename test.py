@@ -7,8 +7,8 @@ import os
 import numpy as np
 
 parser = argparse.ArgumentParser(description="PyTorch EIVIM")
-parser.add_argument("--testdir", default="/homes/lwjiang/Data/IVIM/public_validation_data/")
-parser.add_argument("--targetdir", default="/homes/lwjiang/Data/IVIM/pred/")
+parser.add_argument("--testdir", default="/homes/lwjiang/Data/IVIM/val_bymyself/")
+parser.add_argument("--targetdir", default="/homes/lwjiang/Data/IVIM/pred_val_bymyself/")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Assuming model is saved with torch.save(model.state_dict(), PATH)

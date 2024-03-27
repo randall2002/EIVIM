@@ -6,7 +6,7 @@ import os
 # train_dir = "E:/Data/public_training_data/training1/"
 train_dir = "/homes/lwjiang/Data/IVIM/public_training_data/"
 norm_train_dir1 = os.path.normpath(train_dir)
-train_process_result = os.path.join(norm_train_dir1, "result/result.csv")
+train_process_result = os.path.join(norm_train_dir1, "result/result_150.csv")
 
 # Load the data
 df = pd.read_csv(train_process_result)
@@ -31,5 +31,5 @@ plt.title('Training and Validation rRMSE')
 
 plt.legend()
 plt.show()
-plt.savefig(os.path.join("/homes/lwjiang/Data/IVIM/public_training_data/result/","Loss&rRMSE.png"))
+plt.savefig(os.path.join("/homes/lwjiang/Data/IVIM/public_training_data/result/","Loss&rRMSE_150.png"))
 
