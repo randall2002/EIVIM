@@ -45,7 +45,7 @@ def train_model(model, optimizer, traindataloader, valdataloader, num_epochs=25)
     val_acc_all = []
     val_rRMSE_all = []
     output_dir = f"/homes/lwjiang/Data/IVIM/public_training_data/result_{time.strftime('%M%s')}"
-    tb_writer = SummaryWriter(output_dir)
+    writer = SummaryWriter(output_dir)
     #alpha为损失函数的调节参数，暂时固定。
     alpha = 0
     for epoch in range(num_epochs):
